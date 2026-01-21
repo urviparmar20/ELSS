@@ -13,9 +13,7 @@ import { FormCheckbox } from "../components/FormCheckbox";
 import { FormDatePicker } from "../components/FormDatePicker";
 import { SignatureBox } from "../components/SignatureBox";
 import { KeyboardAwareScrollViewCompat } from "../components/KeyboardAwareScrollViewCompat";
-import { useTheme } from "../hooks/useTheme";
-// import { useAuth } from "@/contexts/AuthContext";
-import { useData, ServiceTime, PartsLubricants } from "../contexts/DataContext";
+import { ServiceTime, PartsLubricants } from "../types/maintenance";
 import { Colors, Spacing, BorderRadius } from "../constants/theme";
 import { Feather } from "@expo/vector-icons";
 import type { MaintenanceStackParamList } from "../navigation/MaintenanceStackNavigator";
@@ -24,7 +22,7 @@ import { useEquipmentTypeList } from "../hooks/useEquipmentType";
 import { useEquipmentListByType } from "../hooks/useEquipmentListByType";
 import { useGeneralChecklist } from "../hooks/useGeneralChecklist";
 
-type MaintenanceFormRouteProp = RouteProp<MaintenanceStackParamList, "MaintenanceForm">;
+type MaintenanceFormRouteProp = RouteProp<MaintenanceStackParamList, "GMForm">;
 type MaintenanceNavigationProp = NativeStackNavigationProp<MaintenanceStackParamList>;
 
 const DEFAULT_PARTS_LUBRICANTS: PartsLubricants = {
@@ -44,11 +42,11 @@ export default function MaintenanceFormScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<MaintenanceNavigationProp>();
   const route = useRoute<MaintenanceFormRouteProp>();
-  const { maintenanceRecords} = useData();
   const colors = Colors.light;
 
   const isEditing = !!route.params?.id;
-  const existingRecord = isEditing ? maintenanceRecords.find((r) => r.id === route.params.id) : null;
+  
+  const existingRecord = route.params?.report || null;
 
   const [companyOptions, setCompanyOptions] = useState<{ id: string; name: string }[]>([]);
   const [equipmentTypeOptions, setEquipmentTypeOptions] = useState<

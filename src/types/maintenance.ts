@@ -1,4 +1,3 @@
-export type ServiceReportMode = "submit" | "draft";
 
 export type RNFile = {
   uri: string;
@@ -6,9 +5,6 @@ export type RNFile = {
   type: string;
 };
 
-export type RNImageFile = RNFile & {
-  size?: number;
-};
 
 export interface ServiceReportStoreParams {
   token: string;
@@ -71,6 +67,7 @@ export interface PartsLubricants {
   compressorOil: string;
   hydraulicOil: string;
   transmissionOil: string;
+  otherPartsSupplied: string;
 }
 
 // ----------------------
@@ -78,7 +75,6 @@ export interface PartsLubricants {
 // ----------------------
 
 export type ValidateFormParams = {
-  mode: ServiceReportMode;
 
   companyId: string | null;
   address: string;
@@ -108,8 +104,6 @@ export type ValidateFormParams = {
   completionDate: string;
 
   isChargeable: boolean | null;
-
-  images?: RNImageFile[];
 
 };
 

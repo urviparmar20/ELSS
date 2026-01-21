@@ -20,7 +20,7 @@ type MaintenanceNavigationProp = NativeStackNavigationProp<MaintenanceStackParam
 
 const ITEMS_PER_PAGE = 10;
 
-export default function MaintenanceListScreen() {
+export default function GMListScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const navigation = useNavigation<MaintenanceNavigationProp>();
   const { theme, isDark } = useTheme();
@@ -225,7 +225,7 @@ export default function MaintenanceListScreen() {
           styles.fab,
           { backgroundColor: colors.secondary, bottom: tabBarHeight + Spacing.xl },
         ]}
-        onPress={() => navigation.navigate("MaintenanceForm", {})}
+        onPress={() => navigation.navigate("GMForm", {})}
       >
         <Feather name="plus" size={24} color="#fff" />
       </Pressable>

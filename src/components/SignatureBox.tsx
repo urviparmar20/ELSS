@@ -80,12 +80,6 @@ export function SignatureBox({ label, value, onChange }: SignatureBoxProps) {
     })
   ).current;
 
-  // const handleClear = useCallback(() => {
-  //   setPaths([]);
-  //   setCurrentPath([]);
-  //   onChangeRef.current("");
-  //   setImageUri("");
-  // }, []);
   const handleClear = useCallback(() => {
     setPaths([]);
     setCurrentPath([]);
@@ -96,22 +90,6 @@ export function SignatureBox({ label, value, onChange }: SignatureBoxProps) {
 
   const hasSignature = paths.length > 0 || currentPath.length > 0;
 
-  // Automatically generate PNG whenever paths change
-  // useEffect(() => {
-  //   const generateImage = async () => {
-  //     if (!viewRef.current || paths.length === 0) return;
-
-  //     try {
-  //       const uri = await captureRef(viewRef, { format: "png", quality: 1 });
-  //       setImageUri(uri);
-  //       console.log("Auto-generated PNG URI:", uri);
-  //     } catch (e) {
-  //       console.error("Failed to generate signature image", e);
-  //     }
-  //   };
-
-  //   generateImage();
-  // }, [paths]);
   useEffect(() => {
     const generateImage = async () => {
       if (!viewRef.current || paths.length === 0) return;

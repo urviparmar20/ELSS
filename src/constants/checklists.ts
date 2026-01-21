@@ -52,6 +52,5 @@ export const DEFAULT_PARTS_LUBRICANTS = {
   engineOil: "",
   compressorOil: "",
   hydraulicOil: "",
-  transmissionOil: "",
-  otherPartsSupplied: "",
+  transmissionOil: "",  otherPartsSupplied: Array(6).fill(""),
 };

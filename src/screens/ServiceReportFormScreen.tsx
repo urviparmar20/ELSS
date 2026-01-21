@@ -116,6 +116,12 @@ export default function ServiceReportFormScreen() {
     ...DEFAULT_PARTS_LUBRICANTS,
     ...(formData?.partsLubricants ?? {}),
   });
+
+  const [otherPartsSupplied, setOtherPartsSupplied] = useState<string[]>(
+    Array(6).fill("")
+  );
+  console.log('formData',formData);
+  
   
   const [technicianSignature, setTechnicianSignature] = useState("");
   const [clientSignature, setClientSignature] = useState("");
@@ -228,6 +234,47 @@ export default function ServiceReportFormScreen() {
       setChecklist(mappedChecklist);
     }
   }, [formData]);
+  useEffect(() => {
+    if (!formData) return;
+  
+    const raw = formData.partsLubricants?.otherPartsSupplied;
+  
+    if (Array.isArray(raw)) {
+      setOtherPartsSupplied([
+        ...raw,
+        ...Array(6 - raw.length).fill(""),
+      ]);
+    } 
+    else if (typeof raw === "string") {
+      const parsed = raw
+        .split(",")
+        .map(s => s.trim())
+        .slice(0, 6);
+  
+      setOtherPartsSupplied([
+        ...parsed,
+        ...Array(6 - parsed.length).fill(""),
+      ]);
+    }
+  }, [formData]);
+
+  useEffect(() => {
+    if (!formData) return;
+  
+    setTechnicianSignature(formData.signature_technician || "");
+    setClientSignature(formData.signature_client || "");
+  }, [formData]);
+  
+  
+
+  const updateOtherPart = (index: number, value: string) => {
+    setOtherPartsSupplied(prev => {
+      const next = [...prev];
+      next[index] = value;
+      return next;
+    });
+  };
+  
 
   const handleChecklistChange = (key: string, checked: boolean) => {
     setChecklist((prev) => ({ ...prev, [key]: checked }));
@@ -386,15 +433,15 @@ export default function ServiceReportFormScreen() {
 
   // --- Separate partsLubricants properly ---
   const servicingPartsLubricants: Record<string, string> = {};
-  const otherPartsSupplied: string[] = [];
 
   Object.entries(partsLubricants).forEach(([key, value]) => {
-    if (key === "otherPartsSupplied" && value) {
-      otherPartsSupplied.push(value);
-    } else {
+  
       servicingPartsLubricants[key] = value;
-    }
+
   });
+  const filteredOtherParts = otherPartsSupplied.filter(v => v.trim() !== "");
+
+
   
   const handleSaveAsDraft = async () => {
     const { valid, errors } = validateForm({
@@ -447,7 +494,7 @@ export default function ServiceReportFormScreen() {
         },
         operation_check_list: groupedChecklist,
         servicing_parts_lubricants_list: servicingPartsLubricants,
-        other_parts_supplied_list: otherPartsSupplied,
+        other_parts_supplied_list: filteredOtherParts,
         description_status_list: {
           checking: checking,
           servicing: servicing,
@@ -542,7 +589,7 @@ export default function ServiceReportFormScreen() {
         },
         operation_check_list: groupedChecklist,
         servicing_parts_lubricants_list: servicingPartsLubricants,
-        other_parts_supplied_list: otherPartsSupplied,
+        other_parts_supplied_list: filteredOtherParts,
         description_status_list: {
           checking: checking,
           servicing: servicing,
@@ -848,7 +895,22 @@ export default function ServiceReportFormScreen() {
               <FormInput label="Transmission Oil" placeholder="Enter details" value={partsLubricants.transmissionOil} onChangeText={(v) => updatePartsLubricants("transmissionOil", v)} />
             </View>   
           </View>
-          <FormInput label="Other Parts Supplied" placeholder="Enter other parts and details" value={partsLubricants.otherPartsSupplied} onChangeText={(v) => updatePartsLubricants("otherPartsSupplied", v)} multiline numberOfLines={4} style={{ height: 100, textAlignVertical: "top" }} />
+          {/* <FormInput label="Other Parts Supplied" placeholder="Enter other parts and details" value={partsLubricants.otherPartsSupplied} onChangeText={(v) => updatePartsLubricants("otherPartsSupplied", v)} multiline numberOfLines={4} style={{ height: 100, textAlignVertical: "top" }} /> */}
+          <ThemedText type="small" style={{ marginBottom: Spacing.sm, fontWeight: "500" }}>
+            Other Parts Supplied
+          </ThemedText>
+          <View style={styles.twoColumn}>
+            {otherPartsSupplied.map((value, index) => (
+              <View key={index} style={styles.inputHalf}>
+                <FormInput
+                  placeholder={`Other Part ${index + 1}`}
+                  value={value}
+                  onChangeText={(v) => updateOtherPart(index, v)}
+                />
+              </View>
+            ))}
+          </View>
+
         </Card>
 
         {/* Images */}
