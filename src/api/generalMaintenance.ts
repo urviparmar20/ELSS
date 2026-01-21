@@ -25,7 +25,7 @@ export const generalMaintenanceListApi = async ({
     return response.data;
 
   } catch (error) {
-    console.log('API ERROR:', error);
+    // console.log('API ERROR:', error);
     throw error;
   }
 };

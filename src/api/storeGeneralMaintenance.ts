@@ -105,7 +105,6 @@ export const storeGeneralMaintenanceApi = async (params: GeneralMaintenanceStore
       headers: {
         Accept: "application/json",
         Authorization: `Bearer ${params.token}`,
-        "Content-Type": "multipart/form-data",
       },
     };
 

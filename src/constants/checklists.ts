@@ -38,14 +38,20 @@ export const CHECKLIST_AERIAL_PLATFORM = [
 ];
 
 export const DEFAULT_PARTS_LUBRICANTS = {
-  engineAirFilter: "",
-  compressorAirFilter: "",
-  oilFilter: "",
-  compressorOilFilter: "",
-  racorFilter: "",
-  waterFilter: "",
-  compressorOil: "",
-  engineOil: "",
+  engineAirFilterPri: "",
+  engineAirFilterSec: "",
+  compressorAirFilterPri: "",
+  compressorAirFilterSec: "",
+  oilFilterPri: "",
+  oilFilterSec: "",
+  compressorOilFilterPri: "",
   fuelFilter: "",
+  racorFilter: "",
+  hydraulicFilter: "",
+  waterFilter: "",
+  engineOil: "",
+  compressorOil: "",
+  hydraulicOil: "",
+  transmissionOil: "",
   otherPartsSupplied: "",
 };

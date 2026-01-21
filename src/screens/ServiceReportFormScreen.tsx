@@ -1,4 +1,3 @@
-// src/screens/ServiceReportFormScreen.tsx
 import React, { useState, useEffect } from "react";
 import { View, StyleSheet, Alert, Pressable, Platform, Text } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -7,6 +6,7 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import * as ImagePicker from "expo-image-picker";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Image } from "expo-image";
+import { useQueryClient } from "@tanstack/react-query";
 import Toast from "react-native-toast-message";
 import { ThemedText } from "../components/ThemedText";
 import { ThemedView } from "../components/ThemedView";
@@ -21,15 +21,15 @@ import { KeyboardAwareScrollViewCompat } from "../components/KeyboardAwareScroll
 import { useSelector } from "react-redux";
 import { RootState } from "../store";
 import { useTheme } from "../hooks/useTheme";
-import { useData, ServiceTime, PartsLubricants } from "../contexts/DataContext";
+import { ServiceTime, PartsLubricants } from "../types/serviceReport";
 import { Colors, Spacing, BorderRadius } from "../constants/theme";
 import { Feather } from "@expo/vector-icons";
 import type { ReportsStackParamList } from "../navigation/ReportsStackNavigator";
 import { useCompanies } from "../hooks/useCompanies";
 import { useEquipmentTypeList } from "../hooks/useEquipmentType";
 import { useEquipmentListByType } from "../hooks/useEquipmentListByType";
+import { buildServiceReportFormData } from "../utils/buildServiceReportFormData";
 import { useStoreServiceReport } from "../hooks/useStoreServiceReport";
-import { buildServiceReportPayload } from "../utils/buildServiceReportPayload";
 import { mapRawServiceReport } from "../utils/mapRawServiceReport";
 import { 
   CHECKLIST_GENERAL, 
@@ -37,11 +37,20 @@ import {
   CHECKLIST_AERIAL_PLATFORM, 
   DEFAULT_PARTS_LUBRICANTS 
 } from "../constants/checklists";
-import { storeServiceReportApi } from "../api/storeServiceReport";
-import { signaturePathToSvgBlob } from "../utils/signaturePathToSvgBlob";
+import { validateForm } from "../utils/validateServiceReport";
 
 type ServiceReportFormRouteProp = RouteProp<ReportsStackParamList, "ServiceReportForm">;
 type ReportsNavigationProp = NativeStackNavigationProp<ReportsStackParamList>;
+type RNImage = {
+  uri: string;
+  name: string;
+  type: string;
+  size?: number;
+  isExisting?: boolean;
+};
+const MAX_IMAGES = 4;
+const MAX_IMAGE_SIZE_MB = 3;
+const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024;
 
 export default function ServiceReportFormScreen() {
   const insets = useSafeAreaInsets();
@@ -50,15 +59,20 @@ export default function ServiceReportFormScreen() {
   const { theme } = useTheme();
   const colors = Colors.light;
 
-  const { companies, equipmentTypes, serviceReports, getEquipmentByType, addServiceReport, updateServiceReport } = useData();
+  const queryClient = useQueryClient();
 
   const token = useSelector((state: RootState) => state.auth.token);
   const userId = useSelector((state: RootState) => state.auth.user?.user_id);
 
+  const { mutateAsync, isPending } = useStoreServiceReport(token);
+
   const existingReport = route.params?.report || null;
-  const formData = existingReport
-  ? mapRawServiceReport(existingReport.raw)
-  : null;
+  
+  const formData = React.useMemo(
+    () => (existingReport ? mapRawServiceReport(existingReport.raw) : null),
+    [existingReport]
+  );
+// console.log('formData===>',formData);
 
   const isEditing = !!existingReport;
   
@@ -68,19 +82,22 @@ export default function ServiceReportFormScreen() {
   const [equipmentOptions, setEquipmentOptions] = useState<{ id: string; name: string }[]>([]);
 
   const [companyName, setCompanyName] = useState(formData?.companyName || "");
+  const [companyId, setCompanyId] = useState<string | null>(formData?.companyId ?? null);
+
   const [mcSerialNo, setMcSerialNo] = useState(formData?.mcSerialNo || "");
   const [hourMeter, setHourMeter] = useState(formData?.hourMeter || "");
   const [jobNo, setJobNo] = useState(formData?.jobNo || "");
   const [address, setAddress] = useState(formData?.address || "");
-  const [contactPerson, setContactPerson] = useState(formData?.contactPerson || "");
-  const [contactNo, setContactNo] = useState(formData?.contactNo || "");
-  const [equipmentTypeId, setEquipmentTypeId] = useState(formData?.equipmentTypeId || "");
+  const [equipmentTypeId, setEquipmentTypeId] = useState<string | null>(
+    formData?.equipmentTypeId ?? null
+  );
+  
   const [equipmentTypeName, setEquipmentTypeName] = useState(formData?.equipmentTypeName || "");
 
   const [equipmentId, setEquipmentId] = useState(formData?.equipmentId || "");
+
   const [clientName, setClientName] = useState(formData?.clientName || "");
   const [clientContactNo, setClientContactNo] = useState(formData?.clientContactNo || "");
-  const [serviceTechnicianName, setServiceTechnicianName] = useState(formData?.serviceTechnicianName || "");
   const [serviceTimes, setServiceTimes] = useState<ServiceTime[]>(formData?.serviceTimes || [{ date: new Date().toISOString().split("T")[0], startTime: "09:00", endTime: "17:00" }]);
 
   const [activeStartPickerIndex, setActiveStartPickerIndex] =
@@ -88,36 +105,80 @@ export default function ServiceReportFormScreen() {
   const [activeEndPickerIndex, setActiveEndPickerIndex] =
   useState<number | null>(null);
 
-  const [weeklyChecking, setWeeklyChecking] = useState(formData?.weeklyChecking || false);
-  const [monthlyServicing, setMonthlyServicing] = useState(formData?.monthlyServicing || false);
-  const [halfYearlyServicing, setHalfYearlyServicing] = useState(formData?.halfYearlyServicing || false);
-  const [yearlyServicing, setYearlyServicing] = useState(formData?.yearlyServicing || false);
-
-  const [washing, setWashing] = useState(formData?.washing || false);
-  const [cleaning, setCleaning] = useState(formData?.cleaning || false);
+  const [checking, setChecking] = useState(formData?.checking || false);
+  const [servicing, setServicing] = useState(formData?.servicing || false);
+  const [repair, setRepair] = useState(formData?.repair || false);
   const [remarks, setRemarks] = useState(formData?.remarks || "");
   const [checklist, setChecklist] = useState<Record<string, boolean>>(formData?.checklist || {});
 
   const [isChargeable, setIsChargeable] = useState<boolean | null>(formData?.isChargeable ?? null);
-  // const [partsLubricants, setPartsLubricants] = useState<PartsLubricants>(formData?.partsLubricants || DEFAULT_PARTS_LUBRICANTS);
   const [partsLubricants, setPartsLubricants] = useState<PartsLubricants>({
     ...DEFAULT_PARTS_LUBRICANTS,
     ...(formData?.partsLubricants ?? {}),
   });
   
   const [technicianSignature, setTechnicianSignature] = useState("");
-  const [supervisorSignature, setSupervisorSignature] = useState("");
-  const [serviceDepartment, setServiceDepartment] = useState(formData?.serviceDepartment || "");
+  const [clientSignature, setClientSignature] = useState("");
   const [completionDate, setCompletionDate] = useState(formData?.completionDate || new Date().toISOString().split("T")[0]);
-  const [images, setImages] = useState<(File | Blob)[]>([]);
 
-  const [isLoading, setIsLoading] = useState(false);
+  // const [images, setImages] = useState<RNImage[]>(formData?.images || []);
+
 
   const { data: companyData } = useCompanies();
   const { data: eqTypeData } = useEquipmentTypeList();
   const { data: equipmentListData } = useEquipmentListByType(equipmentTypeId);
+  useEffect(() => {
+    if (!isEditing) return;
+    if (!equipmentTypeOptions.length) return;
+    if (!formData?.equipmentTypeName) return;
   
-  const storeMutation = useStoreServiceReport();
+    const matched = equipmentTypeOptions.find(
+      t => t.name.trim() === formData.equipmentTypeName.trim()
+    );
+  
+    if (matched) {
+      setEquipmentTypeId(matched.id);
+    }
+  }, [isEditing, equipmentTypeOptions, formData]);
+  useEffect(() => {
+    if (!isEditing) return;
+    if (!equipmentOptions.length) return;
+    if (!formData?.equipmentId) return;
+  
+    const matched = equipmentOptions.find(
+      e => e.name.trim() === formData.equipmentId.trim()
+    );
+  
+    if (matched) {
+      setEquipmentId(matched.id);
+    }
+  }, [isEditing, equipmentOptions, formData]);
+  
+  useEffect(() => {
+    if (!companyOptions.length) return;
+    if (!companyName) return;
+  
+    const matched = companyOptions.find(
+      c => c.name.trim() === companyName.trim()
+    );
+  
+    if (matched) {
+      setCompanyId(matched.id);
+    }
+  }, [companyOptions, companyName]);
+  useEffect(() => {
+    if (!equipmentTypeOptions.length) return;
+    if (!equipmentTypeName) return;
+  
+    const matched = equipmentTypeOptions.find(
+      t => t.name.trim() === equipmentTypeName.trim()
+    );
+  
+    if (matched) {
+      setEquipmentTypeId(matched.id);
+    }
+  }, [equipmentTypeOptions, equipmentTypeName]);
+    
 
   useEffect(() => {
     const company = companyData?.data?.company;
@@ -141,15 +202,20 @@ export default function ServiceReportFormScreen() {
   }, [companyData, eqTypeData]);
 
   useEffect(() => {
-    if (equipmentListData?.data?.equipmentList?.equip_id) {
-      const formatted = equipmentListData.data.equipmentList.equip_id.map((equipId: string) => ({ id: equipId, name: equipId }));
-      
+    const list = equipmentListData?.data?.equipmentList;
+  
+    if (list?.ids && list?.equip_id) {
+      const formatted = list.equip_id.map((equipCode: string, index: number) => ({
+        id: String(list.ids[index]),   
+        name: equipCode,               
+      }));
+  
       setEquipmentOptions(formatted);
     } else {
       setEquipmentOptions([]);
     }
   }, [equipmentListData]);
-
+  
   useEffect(() => {
     navigation.setOptions({
       headerTitle: isEditing ? "Edit Service Report" : "New Service Report",
@@ -163,14 +229,6 @@ export default function ServiceReportFormScreen() {
     }
   }, [formData]);
 
-  const availableEquipment = equipmentTypeId ? getEquipmentByType(equipmentTypeId) : [];
-
-
-
-
-  // const handleChecklistChange = (item: string, checked: boolean) => {
-  //   setChecklist((prev) => ({ ...prev, [item]: checked }));
-  // };
   const handleChecklistChange = (key: string, checked: boolean) => {
     setChecklist((prev) => ({ ...prev, [key]: checked }));
   };
@@ -211,55 +269,93 @@ export default function ServiceReportFormScreen() {
     setPartsLubricants((prev) => ({ ...prev, [field]: value }));
   };
 
-  const pickImage = async () => {
-    if (Platform.OS === "web") {
-      Toast.show({ type: "error", text1: "Info", text2: "Run in Expo Go to use the camera and photo library" });
-      return;
-    }
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") {
-      Toast.show({ type: "error", text1: "Permission Required", text2: "Please allow access to your photo library to add images." });
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsMultipleSelection: true, quality: 0.8 });
-    if (!result.canceled && result.assets) {
-      // const newImages = result.assets.map((asset: any) => asset.uri);
-      // setImages((prev) => [...prev, ...newImages]);
-      const newImages = await Promise.all(
-        result.assets.map(async (asset: any) => {
-          const response = await fetch(asset.uri);
-          const blob = await response.blob();
-          // Create a File with a filename (optional, use asset.filename if available)
-          const fileName = asset.fileName || `image_${Date.now()}.jpg`;
-          return new File([blob], fileName, { type: blob.type });
-        })
-      );
-      
-      setImages((prev) => [...prev, ...newImages]);
-      
-    }
+  // const pickImage = async () => {
+  //   if (images.length >= MAX_IMAGES) {
+  //     Toast.show({
+  //       type: "error",
+  //       text1: "Image Limit",
+  //       text2: "You can upload a maximum of 4 images",
+  //     });
+  //     return;
+  //   }
+  //   const { status } =
+  //     await ImagePicker.requestMediaLibraryPermissionsAsync();
+  //   if (status !== "granted") return;
 
-  };
+  //   const res = await ImagePicker.launchImageLibraryAsync({
+  //     allowsMultipleSelection: true,
+  //     quality: 0.8,
+  //   });
 
-  const takePhoto = async () => {
-    if (Platform.OS === "web") {
-      Toast.show({ type: "error", text1: "Info", text2: "Run in Expo Go to use the camera" });
-      return;
-    }
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== "granted") {
-      Toast.show({ type: "error", text1: "Permission Required", text2: "Please allow access to your camera to take photos." });
-      return;
-    }
-    const result = await ImagePicker.launchCameraAsync({ quality: 0.8 });
-    if (!result.canceled && result.assets && result.assets[0]) {
-      setImages((prev) => [...prev, result.assets[0].uri]);
-    }
-  };
+  //   if (!res.canceled) {
+  //     const remainingSlots = MAX_IMAGES - images.length;
+  
+  //     const validImages = res.assets
+  //       .slice(0, remainingSlots)
+  //       .filter((a) => {
+  //         if (a.fileSize && a.fileSize > MAX_IMAGE_SIZE_BYTES) {
+  //           Toast.show({
+  //             type: "error",
+  //             text1: "Image Too Large",
+  //             text2: "Each image must be 3 MB or less",
+  //           });
+  //           return false;
+  //         }
+  //         return true;
+  //       })
+  //       .map((a) => ({
+  //         uri: a.uri,
+  //         name: a.fileName ?? `img_${Date.now()}.jpg`,
+  //         type: a.mimeType ?? "image/jpeg",
+  //         size: a.fileSize,
+  //       }));
+  
+  //     setImages((prev) => [...prev, ...validImages]);
+  //   }
+  // };
 
-  const removeImage = (index: number) => {
-    setImages((prev) => prev.filter((_, i) => i !== index));
-  };
+  // const takePhoto = async () => {
+  //   if (images.length >= MAX_IMAGES) {
+  //     Toast.show({
+  //       type: "error",
+  //       text1: "Image Limit",
+  //       text2: "You can upload a maximum of 4 images",
+  //     });
+  //     return;
+  //   }
+  //   const { status } =
+  //     await ImagePicker.requestCameraPermissionsAsync();
+  //   if (status !== "granted") return;
+
+  //   const res = await ImagePicker.launchCameraAsync({ quality: 0.8 });
+  //   if (!res.canceled) {
+  //     const a = res.assets[0];
+  
+  //     if (a.fileSize && a.fileSize > MAX_IMAGE_SIZE_BYTES) {
+  //       Toast.show({
+  //         type: "error",
+  //         text1: "Image Too Large",
+  //         text2: "Each image must be 3 MB or less",
+  //       });
+  //       return;
+  //     }
+  
+  //     setImages((prev) => [
+  //       ...prev,
+  //       {
+  //         uri: a.uri,
+  //         name: a.fileName ?? `photo_${Date.now()}.jpg`,
+  //         type: a.mimeType ?? "image/jpeg",
+  //         size: a.fileSize,
+  //       },
+  //     ]);
+  //   }
+  // };
+
+
+  // const removeImage = (index: number) => {
+  //   setImages((prev) => prev.filter((_, i) => i !== index));
+  // };
 
 
   // Dynamically map API checklist to your state
@@ -270,134 +366,228 @@ export default function ServiceReportFormScreen() {
     });
     return mapped;
   };
+  // --- Group checklist properly ---
+  const checklistGroupMap: Record<string, "general_list" | "forklift_list" | "aerial_platform_list"> = Object.fromEntries([
+    ...CHECKLIST_GENERAL.map(i => [i.key, "general_list"]),
+    ...CHECKLIST_FORKLIFT_LOADER.map(i => [i.key, "forklift_list"]),
+    ...CHECKLIST_AERIAL_PLATFORM.map(i => [i.key, "aerial_platform_list"]),
+  ]);
 
-
-  const buildReportData = (status: "submit" | "draft") => {
-    const eqType = equipmentTypes.find((t) => t.id === equipmentTypeId);
-    const eq = availableEquipment.find((e) => e.id === equipmentId);
-
-    const servicingPartsLubricants: Record<string, string> = {};
-    const otherPartsSupplied: string[] = [];
-    
-    Object.entries(partsLubricants).forEach(([key, value]) => {
-      if (key === "otherPartsSupplied") {
-        if (value) {
-          otherPartsSupplied.push(value);
-        }
-      } else {
-        servicingPartsLubricants[key] = value;
-      }
-    });
-    
-    
-    return {
-      token: token,
-      user_id: userId,
-      company_name: companyName,
-      company_address: address,
-      job_no: jobNo,
-      hr_meter: hourMeter,  
-      equipment_type:equipmentTypeId,
-      equipment_id: equipmentId,
-      serial_no: mcSerialNo,
-      mc: mcSerialNo,
-      // DATE LIST
-      date_list: serviceTimes.map((t) => t.date),
-      // TIME LIST
-      time_list: {
-        start: serviceTimes.map((t) => t.startTime),
-        end: serviceTimes.map((t) => t.endTime),
-      },
-      servicing_parts_lubricants_list: servicingPartsLubricants,
-      other_parts_supplied_list: otherPartsSupplied,
-
-      // other_parts_supplied_list: partsLubricants?.otherPartsSupplied,
-      operation_check_list: checklist,
-      description: remarks,
-      // signature_client: supervisorSignature,
-      // signature_technician: technicianSignature,
-      signature_technician: technicianSignature
-      ? signaturePathToSvgBlob(technicianSignature)
-      : undefined,
-  
-    signature_client: supervisorSignature
-      ? signaturePathToSvgBlob(supervisorSignature)
-      : undefined,
-      filled_date: completionDate,
-      is_chargable: String(isChargeable),
-      client_name: clientName,
-      client_tel_no: clientContactNo,
-      images: images,
-      description_status_list: {
-        checking: weeklyChecking,
-        servicing: monthlyServicing || halfYearlyServicing || yearlyServicing,
-        repair: false,
-      },
-
-      // serviceTimes,
-      // weeklyChecking,
-      // monthlyServicing,
-      // halfYearlyServicing,
-      // yearlyServicing,
-      // washing,
-      // cleaning,
-      // checklist,
-      // partsSuppliedText: "",
-      // partsLubricants,
-      // technicianSignature,
-      // supervisorSignature,
-      // serviceDepartment,
-    };
+  const groupedChecklist = {
+    general_list: {},
+    forklift_list: {},
+    aerial_platform_list: {},
   };
 
+  ALL_CHECKLIST_ITEMS.forEach((item) => {
+    const group = checklistGroupMap[item.key];
+    if (group) groupedChecklist[group][item.key] = checklist[item.key] || false;
+  });
+
+  // --- Separate partsLubricants properly ---
+  const servicingPartsLubricants: Record<string, string> = {};
+  const otherPartsSupplied: string[] = [];
+
+  Object.entries(partsLubricants).forEach(([key, value]) => {
+    if (key === "otherPartsSupplied" && value) {
+      otherPartsSupplied.push(value);
+    } else {
+      servicingPartsLubricants[key] = value;
+    }
+  });
+  
   const handleSaveAsDraft = async () => {
-    setIsLoading(true);
+    const { valid, errors } = validateForm({
+      mode: "draft",
+      companyId,
+      address,
+      mcSerialNo,
+      hourMeter,
+      jobNo,
+      equipmentTypeId,
+      equipmentId,
+      clientName,
+      clientContactNo,
+      serviceTimes,
+      checklist,
+      checking,
+      servicing,
+      repair,
+      remarks,
+      technicianSignature,
+      clientSignature,
+      completionDate,
+      isChargeable
+    });
+    
+    if (!valid) {
+      Toast.show({
+        type: "error",
+        text1: "Validation Error",
+        text2: errors[0],
+      });
+      return;
+    }
     try {
-      const reportData = buildReportData("draft");
-      if (isEditing && existingReport) {
-        updateServiceReport(existingReport.id, reportData);
-        Alert.alert("Success", "Service report saved as draft", [{ text: "OK", onPress: () => navigation.goBack() }]);
-      } else {
-        addServiceReport(reportData);
-        Alert.alert("Success", "Service report saved as draft", [{ text: "OK", onPress: () => navigation.goBack() }]);
+      const formData = buildServiceReportFormData({
+        report_id: isEditing ? existingReport.id : 0,
+        user_id: userId,
+        company_name: companyId,
+        company_address: address,
+        job_no: jobNo,
+        hr_meter: hourMeter,
+        equipment_type: equipmentTypeId,
+        equipment_id: equipmentId,
+        serial_no: mcSerialNo,
+        mc: mcSerialNo,
+        date_list: serviceTimes.map(t => t.date),
+        time_list: {
+          start: serviceTimes.map(t => t.startTime),
+          end: serviceTimes.map(t => t.endTime),
+        },
+        operation_check_list: groupedChecklist,
+        servicing_parts_lubricants_list: servicingPartsLubricants,
+        other_parts_supplied_list: otherPartsSupplied,
+        description_status_list: {
+          checking: checking,
+          servicing: servicing,
+          repair: repair,
+        },
+        description: remarks,
+        signature_technician: technicianSignature
+          ? { uri: technicianSignature, name: "technician-signature.jpg", type: "image/jpeg" }
+          : undefined,
+        signature_client: clientSignature
+          ? { uri: clientSignature, name: "client-signature.jpg", type: "image/jpeg" }
+          : undefined,
+        filled_date: completionDate instanceof Date ? completionDate.toISOString() : completionDate,
+        is_chargable: isChargeable === null ? "N" : isChargeable ? "Y" : "N",
+        client_name: clientName,
+        client_tel_no: clientContactNo,
+      });
+      console.log("=== FORMDATA START ===");
+      for (const pair of formData.entries()) {
+        console.log(pair[0], pair[1]);
       }
-    } catch (err) {
-      Toast.show({ type: "error", text1: "Error", text2: "Failed to save draft" });
-    } finally {
-      setIsLoading(false);
+      console.log("=== FORMDATA END ===");
+      
+      const res = await mutateAsync({ formData, mode: "draft" });
+      if (res) {
+        queryClient.invalidateQueries({
+          queryKey: ["service-reports"],
+        });
+        Alert.alert("Success", "Service report saved as draft", [
+          { text: "OK", onPress: () => navigation.goBack() },
+        ]);
+      }
+    } catch (error) {
+      console.error("Failed to submit service report:", error);
+      Alert.alert("Error", "Failed to submit service report. Please try again.");
+       Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: error || "Failed to draft report",
+      });
     }
   };
 
   const handleSubmit = async () => {
-    setIsLoading(true);
-    const reportData = buildReportData("submit");
-    console.log('reportData',reportData);
-    try {
+    const { valid, errors } = validateForm({
+      mode: "submit",
+      companyId,
+      address,
+      mcSerialNo,
+      hourMeter,
+      jobNo,
+      equipmentTypeId,
+      equipmentId,
+      clientName,
+      clientContactNo,
+      serviceTimes,
+      checklist,
+      checking,
+      servicing,
+      repair,
+      remarks,
+      technicianSignature,
+      clientSignature,
+      completionDate,
+      isChargeable
+    });
     
-      // const payloadPartial = await buildServiceReportPayload({
-      //   reportData,
-      //   report_id: 0,
-      // });
-      
-      //  CALL API HERE
-        const res = await storeServiceReportApi(reportData);
-        console.log("SUCCESS:", res);
+    if (!valid) {
+      Toast.show({
+        type: "error",
+        text1: "Validation Error",
+        text2: errors[0],
+      });
+      return;
+    }
+    try {
+      const formData = buildServiceReportFormData({
+        report_id: isEditing ? existingReport.id : 0,
+        user_id: userId,
+        company_name: companyId,
+        company_address: address,
+        job_no: jobNo,
+        hr_meter: hourMeter,
+        equipment_type: equipmentTypeId,
+        equipment_id: equipmentId,
+        serial_no: mcSerialNo,
+        mc: mcSerialNo,
+        date_list: serviceTimes.map(t => t.date),
+        time_list: {
+          start: serviceTimes.map(t => t.startTime),
+          end: serviceTimes.map(t => t.endTime),
+        },
+        operation_check_list: groupedChecklist,
+        servicing_parts_lubricants_list: servicingPartsLubricants,
+        other_parts_supplied_list: otherPartsSupplied,
+        description_status_list: {
+          checking: checking,
+          servicing: servicing,
+          repair: repair,
+        },
+        description: remarks,
+        signature_technician: technicianSignature
+          ? { uri: technicianSignature, name: "technician-signature.jpg", type: "image/jpeg" }
+          : undefined,
+        signature_client: clientSignature
+          ? { uri: clientSignature, name: "client-signature.jpg", type: "image/jpeg" }
+          : undefined,
+        filled_date: completionDate instanceof Date ? completionDate.toISOString() : completionDate,
+        is_chargable: isChargeable === null ? "N" : isChargeable ? "Y" : "N",
+        client_name: clientName,
+        client_tel_no: clientContactNo,
+        // images,
+      });
 
-      // On success, also update local context / navigate back
-      if (isEditing && existingReport) {
-        updateServiceReport(existingReport.id, reportData);
-      } else {
-        addServiceReport(reportData);
+      console.log("=== FORMDATA START ===");
+      for (const pair of formData.entries()) {
+        console.log(pair[0], pair[1]);
       }
-
-      // Alert.alert("Success", "Service report submitted", [{ text: "OK", onPress: () => navigation.goBack() }]);
-    } catch (err: any) {
-      console.error("Submit error", err);
-      Toast.show({ type: "error", text1: "Error", text2: err?.message || "Failed to submit report" });
-    } finally {
-      setIsLoading(false);
+      console.log("=== FORMDATA END ===");
+      
+      const res = await mutateAsync({ formData, mode: "submit" });
+      if (res) {
+        queryClient.invalidateQueries({
+          queryKey: ["service-reports"],
+        });
+        Alert.alert("Success", "Service report saved successfully.", [
+          { text: "OK", onPress: () => navigation.goBack() },
+        ]);
+      }
+    } catch (error) {
+      console.error("Failed to submit service report:", error);
+      Alert.alert("Error", "Failed to submit service report. Please try again.");
+       Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: error || "Failed to draft report",
+      });
     }
   };
+
 
   const formatTime = (date: Date) =>
   date.toLocaleTimeString("en-GB", {
@@ -416,17 +606,16 @@ export default function ServiceReportFormScreen() {
         {/* Company Details */}
         <Card elevation={1} style={styles.section}>
           <ThemedText type="h4" style={styles.sectionTitle}>Company Details</ThemedText>
+
           <FormDropdown
             label="Company *"
             placeholder="Select company"
-            options={companyOptions.map(c => ({ id: c.name, name: c.name }))} // id = name
-            selectedValue={companyName}
-            onValueChange={setCompanyName}
+            options={companyOptions} // { id, name }
+            selectedValue={companyId}
+            onValueChange={(id) => setCompanyId(id)}
           />
 
           <FormInput label="Address" placeholder="Enter address" value={address} onChangeText={setAddress} multiline />
-          <FormInput label="Contact Person" placeholder="Enter contact person" value={contactPerson} onChangeText={setContactPerson} />
-          <FormInput label="Contact No" placeholder="Enter contact number" value={contactNo} onChangeText={setContactNo} keyboardType="phone-pad" />
         </Card>
 
         {/* Equipment Details */}
@@ -436,20 +625,24 @@ export default function ServiceReportFormScreen() {
           <FormInput label="Hour Meter" placeholder="Enter hour meter reading" value={hourMeter} onChangeText={setHourMeter} keyboardType="numeric" />
           <FormInput label="Job No" placeholder="Enter job number" value={jobNo} onChangeText={setJobNo} />
 
-          {/* <FormDropdown label="Equipment Type" placeholder="Select equipment type" options={equipmentTypeOptions} selectedValue={equipmentTypeId} onValueChange={(v) => { setEquipmentTypeId(v); setEquipmentId(""); }} /> */}
           <FormDropdown
             label="Equipment Type"
             placeholder="Select equipment type"
-            options={equipmentTypeOptions.map(t => ({ id: t.name, name: t.name }))} // id = name
-            selectedValue={equipmentTypeName}
-            onValueChange={(name) => {
-              setEquipmentTypeName(name); // store name
-              const selectedType = equipmentTypeOptions.find(t => t.name === name);
-              setEquipmentTypeId(selectedType?.id || ""); // optional: keep ID if needed
-              setEquipmentId(""); // reset equipment dropdown
+            options={equipmentTypeOptions} // { id, name }
+            selectedValue={equipmentTypeId}
+            onValueChange={(id) => {
+              setEquipmentTypeId(id);
+              setEquipmentId(""); // reset equipment
             }}
           />
-          {equipmentTypeId && <FormDropdown label="Equipment ID" placeholder="Select equipment" options={equipmentOptions} selectedValue={equipmentId} onValueChange={setEquipmentId} />}
+
+          <FormDropdown
+            label="Equipment ID"
+            placeholder="Select equipment"
+            options={equipmentOptions} // { id, name }
+            selectedValue={equipmentId}
+            onValueChange={(id) => setEquipmentId(id)}
+          />
 
           <FormInput label="Client Name" placeholder="Enter client name" value={clientName} onChangeText={setClientName} />
           <FormInput label="Client Contact No" placeholder="Enter client contact" value={clientContactNo} onChangeText={setClientContactNo} keyboardType="phone-pad" />
@@ -457,9 +650,7 @@ export default function ServiceReportFormScreen() {
 
         {/* Service Details */}
         <Card elevation={1} style={styles.section}>
-          <ThemedText type="h4" style={styles.sectionTitle}>Service Details</ThemedText>
-          <FormInput label="Service Technician Name" placeholder="Enter technician name" value={serviceTechnicianName} onChangeText={setServiceTechnicianName} />
-
+          
           <ThemedText type="small" style={styles.label}>Service Times</ThemedText>
           {serviceTimes.map((time, index) => (
             <View key={index} style={[styles.serviceTimeCard, { borderColor: colors.inputBorder }]}>
@@ -545,14 +736,7 @@ export default function ServiceReportFormScreen() {
             </View>
           ))}
           {serviceTimes.length < 4 && <Pressable style={[styles.addButton, { borderColor: colors.primary }]} onPress={addServiceTime}><Feather name="plus" size={16} color={colors.primary} /><ThemedText type="small" style={{ color: colors.primary, marginLeft: Spacing.xs }}>Add Service Time</ThemedText></Pressable>}
-
-          <ThemedText type="small" style={[styles.label, { marginTop: Spacing.lg }]}>Service Type</ThemedText>
-          <FormCheckbox label="Weekly Checking" checked={weeklyChecking} onChange={setWeeklyChecking} />
-          <FormCheckbox label="Monthly Servicing" checked={monthlyServicing} onChange={setMonthlyServicing} />
-          <FormCheckbox label="Half Yearly Servicing" checked={halfYearlyServicing} onChange={setHalfYearlyServicing} />
-          <FormCheckbox label="Yearly Servicing" checked={yearlyServicing} onChange={setYearlyServicing} />
-          <FormCheckbox label="Washing" checked={washing} onChange={setWashing} />
-          <FormCheckbox label="Cleaning" checked={cleaning} onChange={setCleaning} />
+         
         </Card>
 
         {/* Operation Checklist */}
@@ -606,21 +790,69 @@ export default function ServiceReportFormScreen() {
 
         {/* Parts & Lubricants */}
         <Card elevation={1} style={styles.section}>
-          <ThemedText type="h4" style={styles.sectionTitle}>Parts & Lubricants Supplied</ThemedText>
-          <FormInput label="Engine Air Filter" placeholder="Enter quantity/details" value={partsLubricants.engineAirFilter} onChangeText={(v) => updatePartsLubricants("engineAirFilter", v)} />
-          <FormInput label="Compressor Air Filter" placeholder="Enter quantity/details" value={partsLubricants.compressorAirFilter} onChangeText={(v) => updatePartsLubricants("compressorAirFilter", v)} />
-          <FormInput label="Oil Filter" placeholder="Enter quantity/details" value={partsLubricants.oilFilter} onChangeText={(v) => updatePartsLubricants("oilFilter", v)} />
-          <FormInput label="Compressor Oil Filter" placeholder="Enter quantity/details" value={partsLubricants.compressorOilFilter} onChangeText={(v) => updatePartsLubricants("compressorOilFilter", v)} />
-          <FormInput label="Racor Filter" placeholder="Enter quantity/details" value={partsLubricants.racorFilter} onChangeText={(v) => updatePartsLubricants("racorFilter", v)} />
-          <FormInput label="Water Filter" placeholder="Enter quantity/details" value={partsLubricants.waterFilter} onChangeText={(v) => updatePartsLubricants("waterFilter", v)} />
-          <FormInput label="Compressor Oil" placeholder="Enter quantity/details" value={partsLubricants.compressorOil} onChangeText={(v) => updatePartsLubricants("compressorOil", v)} />
-          <FormInput label="Engine Oil" placeholder="Enter quantity/details" value={partsLubricants.engineOil} onChangeText={(v) => updatePartsLubricants("engineOil", v)} />
-          <FormInput label="Fuel Filter" placeholder="Enter quantity/details" value={partsLubricants.fuelFilter} onChangeText={(v) => updatePartsLubricants("fuelFilter", v)} />
+          <ThemedText type="h4" style={styles.sectionTitle}>Parts & Lubricants Supplied:</ThemedText>
+          <View style={styles.twoColumn}>
+            <View style={styles.inputHalf}>
+              <FormInput
+                label="Engine Air Filter (Pri)"
+                placeholder="Enter details"
+                value={partsLubricants.engineAirFilterPri}
+                onChangeText={(v) => updatePartsLubricants("engineAirFilterPri", v)}
+                />
+            </View>
+            <View style={styles.inputHalf}>
+                <FormInput
+                  label="Engine Air Filter (Sec)"
+                  placeholder="Enter details"
+                  value={partsLubricants.engineAirFilterSec}
+                  onChangeText={(v) => updatePartsLubricants("engineAirFilterSec", v)}
+                />
+            </View>  
+            <View style={styles.inputHalf}>
+              <FormInput label="Compressor Air Filter(Pri)" placeholder="Enter details" value={partsLubricants.compressorAirFilterPri} onChangeText={(v) => updatePartsLubricants("compressorAirFilterPri", v)} />
+            </View>
+            <View style={styles.inputHalf}>
+              <FormInput label="Compressor Air Filter(Sec)" placeholder="Enter details" value={partsLubricants.compressorAirFilterSec} onChangeText={(v) => updatePartsLubricants("compressorAirFilterSec", v)} />
+            </View>
+            <View style={styles.inputHalf}>
+              <FormInput label="Oil Filter(Pri)" placeholder="Enter details" value={partsLubricants.oilFilterPri} onChangeText={(v) => updatePartsLubricants("oilFilterPri", v)} />
+            </View>
+            <View style={styles.inputHalf}>
+              <FormInput label="Oil Filter(Sec)" placeholder="Enter details" value={partsLubricants.oilFilterSec} onChangeText={(v) => updatePartsLubricants("oilFilterSec", v)} />
+            </View>
+            <View style={styles.inputHalf}>
+              <FormInput label="Compressor Oil Filter(Pri)" placeholder="Enter details" value={partsLubricants.compressorOilFilterPri} onChangeText={(v) => updatePartsLubricants("compressorOilFilterPri", v)} />
+            </View>
+            <View style={styles.inputHalf}>
+              <FormInput label="Fuel Filter" placeholder="Enter details" value={partsLubricants.fuelFilter} onChangeText={(v) => updatePartsLubricants("fuelFilter", v)} />
+            </View>
+            <View style={styles.inputHalf}>
+              <FormInput label="Racor Filter" placeholder="Enter details" value={partsLubricants.racorFilter} onChangeText={(v) => updatePartsLubricants("racorFilter", v)} />
+            </View>
+            <View style={styles.inputHalf}>
+              <FormInput label="Hydraulic Filter" placeholder="Enter details" value={partsLubricants.hydraulicFilter} onChangeText={(v) => updatePartsLubricants("hydraulicFilter", v)} />
+            </View>
+            <View style={styles.inputHalf}>
+              <FormInput label="Water Filter" placeholder="Enter details" value={partsLubricants.waterFilter} onChangeText={(v) => updatePartsLubricants("waterFilter", v)} />
+            </View>
+            <View style={styles.inputHalf}>
+              <FormInput label="Engine Oil" placeholder="Enter details" value={partsLubricants.engineOil} onChangeText={(v) => updatePartsLubricants("engineOil", v)} />
+            </View>
+            <View style={styles.inputHalf}>
+              <FormInput label="Compressor Oil" placeholder="Enter details" value={partsLubricants.compressorOil} onChangeText={(v) => updatePartsLubricants("compressorOil", v)} />
+            </View>
+            <View style={styles.inputHalf}>
+              <FormInput label="Hydraulic Oil" placeholder="Enter details" value={partsLubricants.hydraulicOil} onChangeText={(v) => updatePartsLubricants("hydraulicOil", v)} />
+            </View>
+            <View style={styles.inputHalf}>
+              <FormInput label="Transmission Oil" placeholder="Enter details" value={partsLubricants.transmissionOil} onChangeText={(v) => updatePartsLubricants("transmissionOil", v)} />
+            </View>   
+          </View>
           <FormInput label="Other Parts Supplied" placeholder="Enter other parts and details" value={partsLubricants.otherPartsSupplied} onChangeText={(v) => updatePartsLubricants("otherPartsSupplied", v)} multiline numberOfLines={4} style={{ height: 100, textAlignVertical: "top" }} />
         </Card>
 
         {/* Images */}
-        <Card elevation={1} style={styles.section}>
+        {/* <Card elevation={1} style={styles.section}>
           <ThemedText type="h4" style={styles.sectionTitle}>Images</ThemedText>
           <ThemedText type="small" style={{ color: colors.textSecondary, marginBottom: Spacing.md }}>Add photos of the equipment or service work</ThemedText>
 
@@ -635,32 +867,58 @@ export default function ServiceReportFormScreen() {
             </Pressable>
           </View>
 
-          {images.length > 0 && (
+           {images.length > 0 && (
             <View style={styles.imagesGrid}>
-              {images.map((uri, index) => (
+               {images.map((img, index) => (
                 <View key={index} style={styles.imageContainer}>
-                  <Image source={{ uri }} style={styles.imagePreview} contentFit="cover" />
-                  <Pressable style={[styles.imageRemoveButton, { backgroundColor: colors.error }]} onPress={() => removeImage(index)}>
+                  <Image
+                    source={{ uri: img.uri }}
+                    style={styles.imagePreview}
+                    contentFit="cover"
+                  />
+                  <View style={styles.imageIndexBadge}>
+                    <Text style={styles.imageIndexText}>{index + 1}</Text>
+                  </View>
+                  <Pressable
+                    style={[styles.imageRemoveButton, { backgroundColor: colors.error }]}
+                    onPress={() => removeImage(index)}
+                  >
                     <Feather name="x" size={14} color="#fff" />
                   </Pressable>
                 </View>
               ))}
             </View>
-          )}
-        </Card>
+          )} 
+        </Card> */}
 
         {/* Remarks */}
         <Card elevation={1} style={styles.section}>
-          <ThemedText type="h4" style={styles.sectionTitle}>Remarks</ThemedText>
+
+          <ThemedText type="h4" style={[styles.label, { marginTop: Spacing.lg }]}>Service Type</ThemedText>
+          <View style={styles.checkingService}>
+            <FormCheckbox label="Checking" checked={checking} onChange={setChecking} />
+            <FormCheckbox label="Servicing" checked={servicing} onChange={setServicing} />
+            <FormCheckbox label="Repair" checked={repair} onChange={setRepair} />
+          </View>
+          <ThemedText type="h4" style={[styles.sectionTitle, { marginTop: Spacing.lg }]}>Remarks</ThemedText>
           <FormInput label="Remarks/Description" placeholder="Enter any remarks or description" value={remarks} onChangeText={setRemarks} multiline numberOfLines={4} style={{ height: 100, textAlignVertical: "top" }} />
         </Card>
 
         {/* Signatures & Completion */}
         <Card elevation={1} style={styles.section}>
           <ThemedText type="h4" style={styles.sectionTitle}>Signatures & Completion</ThemedText>
-          <SignatureBox label="Service Technician Signature" value={technicianSignature} onChange={setTechnicianSignature} />
-          <SignatureBox label="KSS Supervisor Signature" value={supervisorSignature} onChange={setSupervisorSignature} />
-          <FormInput label="Service Department" placeholder="Enter department" value={serviceDepartment} onChangeText={setServiceDepartment} />
+      
+          <SignatureBox
+            label="Technician Signature"
+            value={technicianSignature}
+            onChange={setTechnicianSignature}
+          />
+          <SignatureBox
+            label="Customer Signature"
+            value={clientSignature}
+            onChange={setClientSignature}
+          />
+
           <FormDatePicker label="Completion Date" value={completionDate} onChange={setCompletionDate} />
         </Card>
 
@@ -680,8 +938,8 @@ export default function ServiceReportFormScreen() {
 
         {/* Buttons */}
         <View style={[styles.buttonContainer, { paddingBottom: insets.bottom + 100 }]}>
-          <CustomButton onPress={handleSaveAsDraft} disabled={isLoading} style={[styles.draftButton, { backgroundColor: colors.secondary }]}>Save as Draft</CustomButton>
-          <CustomButton onPress={handleSubmit} disabled={isLoading} style={[styles.submitButton, { backgroundColor: colors.primary }]}>{isEditing ? "Update Report" : "Submit Report"}</CustomButton>
+          <CustomButton onPress={handleSaveAsDraft} style={[styles.draftButton, { backgroundColor: colors.secondary }]}>Save as Draft</CustomButton>
+          <CustomButton onPress={handleSubmit} style={[styles.submitButton, { backgroundColor: colors.primary }]}>{isEditing ? "Update Report" : "Submit Report"}</CustomButton>
         </View>
       </KeyboardAwareScrollViewCompat>
     </ThemedView>
@@ -738,4 +996,29 @@ const styles = StyleSheet.create({
   radioOption: { flexDirection: "row", alignItems: "center", gap: Spacing.md },
   radioCircle: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, alignItems: "center", justifyContent: "center" },
   radioSelected: { width: 12, height: 12, borderRadius: 6 },
+  checkingService: {flexDirection: "row", gap: 8},
+  twoColumn: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    marginTop: 10
+  },
+  inputHalf: {
+    width: "48%", 
+  },
+  imageIndexBadge: {
+    position: "absolute",
+    bottom: 4,
+    left: 4,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  imageIndexText: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  
 });

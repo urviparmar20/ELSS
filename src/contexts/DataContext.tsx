@@ -7,15 +7,21 @@ export interface ServiceTime {
 }
 
 export interface PartsLubricants {
-  engineAirFilter: string;
-  compressorAirFilter: string;
-  oilFilter: string;
-  compressorOilFilter: string;
-  racorFilter: string;
-  waterFilter: string;
-  compressorOil: string;
-  engineOil: string;
+  engineAirFilterPri: string;
+  engineAirFilterSec: string;
+  compressorAirFilterPri: string;
+  compressorAirFilterSec: string;
+  oilFilterPri: string;
+  oilFilterSec: string;
+  compressorOilFilterPri: string;
   fuelFilter: string;
+  racorFilter: string;
+  hydraulicFilter: string;
+  waterFilter: string;
+  engineOil: string;
+  compressorOil: string;
+  hydraulicOil: string;
+  transmissionOil: string;
   otherPartsSupplied: string;
 }
 
@@ -151,7 +157,24 @@ const INITIAL_MAINTENANCE: MaintenanceRecord[] = [
     remarks: "Regular weekly maintenance completed",
     checklist: { "Checklist 1": true, "Checklist 2": true, "Checklist 3": true },
     partsSuppliedText: "Engine Air Filter, Engine Oil",
-    partsLubricants: { engineAirFilter: "1", compressorAirFilter: "", oilFilter: "", compressorOilFilter: "", racorFilter: "", waterFilter: "", compressorOil: "", engineOil: "5L", fuelFilter: "", otherPartsSupplied: "" },
+    partsLubricants: { 
+      engineAirFilterPri: "",
+      engineAirFilterSec: "",
+      compressorAirFilterPri: "",
+      compressorAirFilterSec: "",
+      oilFilterPri: "",
+      oilFilterSec: "",
+      compressorOilFilterPri: "",
+      fuelFilter: "",
+      racorFilter: "",
+      hydraulicFilter: "",
+      waterFilter: "",
+      engineOil: "",
+      compressorOil: "",
+      hydraulicOil: "",
+      transmissionOil: "",
+      otherPartsSupplied: "" 
+    },
     technicianSignature: "",
     supervisorSignature: "",
     serviceDepartment: "Field Service",
@@ -189,7 +212,21 @@ const INITIAL_MAINTENANCE: MaintenanceRecord[] = [
     remarks: "Monthly service due",
     checklist: {},
     partsSuppliedText: "",
-    partsLubricants: { engineAirFilter: "", compressorAirFilter: "", oilFilter: "", compressorOilFilter: "", racorFilter: "", waterFilter: "", compressorOil: "", engineOil: "", fuelFilter: "", otherPartsSupplied: "" },
+    partsLubricants: { engineAirFilterPri: "",
+    engineAirFilterSec: "",
+    compressorAirFilterPri: "",
+    compressorAirFilterSec: "",
+    oilFilterPri: "",
+    oilFilterSec: "",
+    compressorOilFilterPri: "",
+    fuelFilter: "",
+    racorFilter: "",
+    hydraulicFilter: "",
+    waterFilter: "",
+    engineOil: "",
+    compressorOil: "",
+    hydraulicOil: "",
+    transmissionOil: "", otherPartsSupplied: "" },
     technicianSignature: "",
     supervisorSignature: "",
     serviceDepartment: "Field Service",
@@ -230,7 +267,21 @@ const INITIAL_SERVICE_REPORTS: ServiceReport[] = [
     remarks: "Half-yearly comprehensive service completed",
     checklist: { "Checklist 1": true, "Checklist 2": true, "Checklist 3": true, "Checklist 4": true, "Checklist 5": true },
     partsSuppliedText: "Hydraulic Filter, Hydraulic Oil, Engine Oil Filter",
-    partsLubricants: { engineAirFilter: "", compressorAirFilter: "", oilFilter: "1", compressorOilFilter: "", racorFilter: "", waterFilter: "", compressorOil: "", engineOil: "10L", fuelFilter: "", otherPartsSupplied: "Hydraulic Filter" },
+    partsLubricants: { engineAirFilterPri: "",
+    engineAirFilterSec: "",
+    compressorAirFilterPri: "",
+    compressorAirFilterSec: "",
+    oilFilterPri: "",
+    oilFilterSec: "",
+    compressorOilFilterPri: "",
+    fuelFilter: "",
+    racorFilter: "",
+    hydraulicFilter: "",
+    waterFilter: "",
+    engineOil: "",
+    compressorOil: "",
+    hydraulicOil: "",
+    transmissionOil: "", otherPartsSupplied: "Hydraulic Filter" },
     technicianSignature: "",
     supervisorSignature: "",
     serviceDepartment: "Heavy Equipment",

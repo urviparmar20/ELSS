@@ -394,16 +394,36 @@ export default function MaintenanceFormScreen() {
         </Card>
 
         <Card elevation={1} style={styles.section}>
-          <ThemedText type="h4" style={styles.sectionTitle}>Parts & Lubricants Supplied</ThemedText>
-          <FormInput label="Engine Air Filter" placeholder="Enter quantity/details" value={partsLubricants.engineAirFilter} onChangeText={(v) => updatePartsLubricants("engineAirFilter", v)} />
-          <FormInput label="Compressor Air Filter" placeholder="Enter quantity/details" value={partsLubricants.compressorAirFilter} onChangeText={(v) => updatePartsLubricants("compressorAirFilter", v)} />
-          <FormInput label="Oil Filter" placeholder="Enter quantity/details" value={partsLubricants.oilFilter} onChangeText={(v) => updatePartsLubricants("oilFilter", v)} />
-          <FormInput label="Compressor Oil Filter" placeholder="Enter quantity/details" value={partsLubricants.compressorOilFilter} onChangeText={(v) => updatePartsLubricants("compressorOilFilter", v)} />
-          <FormInput label="Racor Filter" placeholder="Enter quantity/details" value={partsLubricants.racorFilter} onChangeText={(v) => updatePartsLubricants("racorFilter", v)} />
-          <FormInput label="Water Filter" placeholder="Enter quantity/details" value={partsLubricants.waterFilter} onChangeText={(v) => updatePartsLubricants("waterFilter", v)} />
-          <FormInput label="Compressor Oil" placeholder="Enter quantity/details" value={partsLubricants.compressorOil} onChangeText={(v) => updatePartsLubricants("compressorOil", v)} />
-          <FormInput label="Engine Oil" placeholder="Enter quantity/details" value={partsLubricants.engineOil} onChangeText={(v) => updatePartsLubricants("engineOil", v)} />
-          <FormInput label="Fuel Filter" placeholder="Enter quantity/details" value={partsLubricants.fuelFilter} onChangeText={(v) => updatePartsLubricants("fuelFilter", v)} />
+          <ThemedText type="h4" style={styles.sectionTitle}>Parts & Lubricants Supplied:</ThemedText>
+          <View style={styles.twoColumn}>
+            <View style={styles.inputHalf}>
+              <FormInput label="Engine Air Filter" placeholder="Enter details" value={partsLubricants.engineAirFilter} onChangeText={(v) => updatePartsLubricants("engineAirFilter", v)} />
+            </View>
+            <View style={styles.inputHalf}>
+              <FormInput label="Engine Oil Filter" placeholder="Enter details" value={partsLubricants.compressorAirFilter} onChangeText={(v) => updatePartsLubricants("compressorAirFilter", v)} />
+            </View>
+            <View style={styles.inputHalf}>
+              <FormInput label="Engine Fuel Filter" placeholder="Enter details" value={partsLubricants.oilFilter} onChangeText={(v) => updatePartsLubricants("oilFilter", v)} />
+            </View>
+            <View style={styles.inputHalf}>
+              <FormInput label="Pre-Filter" placeholder="Enter details" value={partsLubricants.compressorOilFilter} onChangeText={(v) => updatePartsLubricants("compressorOilFilter", v)} />
+            </View>
+            <View style={styles.inputHalf}>
+              <FormInput label="Water Filter" placeholder="Enter details" value={partsLubricants.waterFilter} onChangeText={(v) => updatePartsLubricants("waterFilter", v)} />
+            </View>
+            <View style={styles.inputHalf}>
+              <FormInput label="Hydraulic Filter" placeholder="Enter details" value={partsLubricants.racorFilter} onChangeText={(v) => updatePartsLubricants("racorFilter", v)} />
+            </View>
+            <View style={styles.inputHalf}>
+              <FormInput label="Engine Oil" placeholder="Enter details" value={partsLubricants.engineOil} onChangeText={(v) => updatePartsLubricants("engineOil", v)} />
+            </View>
+            <View style={styles.inputHalf}>
+              <FormInput label="Hydraulic Oil" placeholder="Enter details" value={partsLubricants.compressorOil} onChangeText={(v) => updatePartsLubricants("compressorOil", v)} />
+            </View>
+            <View style={styles.inputHalf}>
+              <FormInput label="Gear Oil" placeholder="Enter details" value={partsLubricants.compressorOil} onChangeText={(v) => updatePartsLubricants("compressorOil", v)} />
+            </View>
+          </View>
           <FormInput label="Other Parts Supplied" placeholder="Enter other parts and details" value={partsLubricants.otherPartsSupplied} onChangeText={(v) => updatePartsLubricants("otherPartsSupplied", v)} multiline numberOfLines={4} style={{ height: 100, textAlignVertical: "top" }} />
         </Card>
 
@@ -478,4 +498,13 @@ const styles = StyleSheet.create({
   selectAllButton: { flexDirection: "row", alignItems: "center", paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: BorderRadius.sm },
   buttonContainer: { marginTop: Spacing.lg },
   submitButton: {},
+  twoColumn: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    marginTop: 10
+  },
+  inputHalf: {
+    width: "48%", 
+  },
 });

@@ -7,7 +7,7 @@ import { ThemedText } from "../components/ThemedText";
 import { ThemedView } from "../components/ThemedView";
 import { Card } from "../components/Card";
 import { useTheme } from "../hooks/useTheme";
-import { useData, ServiceReport } from "../contexts/DataContext";
+import { ServiceReportRecord }  from "../types/serviceReport"
 import { Colors, Spacing, BorderRadius } from "../constants/theme";
 import { Feather } from "@expo/vector-icons";
 import type { ReportsStackParamList } from "../navigation/ReportsStackNavigator";
@@ -62,7 +62,7 @@ const filteredReports = (data ?? []).filter((report: any) => {
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
   };
 
-  const renderItem = ({ item }: { item: ServiceReport }) => (
+  const renderItem = ({ item }: { item: ServiceReportRecord }) => (
     <Card
       elevation={1}
       style={styles.listItem}
