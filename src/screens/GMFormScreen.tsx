@@ -49,6 +49,15 @@ const DEFAULT_PARTS_LUBRICANTS: PartsLubricants = {
   gearOil: "",
 };
 
+const SERVICE_REVERSE_MAP: Record<string, keyof typeof services> = {
+  "Weekly Checking": "weeklyChecking",
+  "Monthly Servicing": "monthlyServicing",
+  "Half Yearly Servicing": "halfYearlyServicing",
+  "Yearly Servicing": "yearlyServicing",
+  "Washing": "washing",
+  "Cleaning": "cleaning",
+};
+
 export default function MaintenanceFormScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<MaintenanceNavigationProp>();
@@ -65,7 +74,7 @@ export default function MaintenanceFormScreen() {
     () => (existingReport ? mapRawGM(existingReport) : null),
     [existingReport]
   );
-  // console.log('formData',formData);
+  console.log('formData',formData);
 
   const isEditing = !!existingReport;
 
@@ -85,7 +94,9 @@ export default function MaintenanceFormScreen() {
   const [contactNo, setContactNo] = useState(formData?.contactNo || "");
   const [email, setEmail] = useState(formData?.email || "");
 
-  const [equipmentTypeId, setEquipmentTypeId] = useState(formData?.equipmentTypeId || "");
+  const [equipmentTypeId, setEquipmentTypeId] = useState<string | null>(
+    formData?.equipmentTypeId ?? null
+  );
   const [equipmentId, setEquipmentId] = useState(formData?.equipmentId || "");
   const [clientName, setClientName] = useState(formData?.clientName || "");
   const [clientContactNo, setClientContactNo] = useState(formData?.clientContactNo || "");
@@ -142,6 +153,30 @@ export default function MaintenanceFormScreen() {
       });
     }
   }, [isError, error]);
+
+  //services
+  useEffect(() => {
+    if (!isEditing) return;
+    if (!formData?.services) return;
+  
+    const updatedServices = {
+      weeklyChecking: false,
+      monthlyServicing: false,
+      halfYearlyServicing: false,
+      yearlyServicing: false,
+      washing: false,
+      cleaning: false,
+    };
+  
+    formData.services.forEach((serviceLabel: string) => {
+      const key = SERVICE_REVERSE_MAP[serviceLabel];
+      if (key) {
+        updatedServices[key] = true;
+      }
+    });
+  
+    setServices(updatedServices);
+  }, [isEditing, formData]);
   
   //Company
   useEffect(() => {
@@ -171,6 +206,7 @@ export default function MaintenanceFormScreen() {
     }
   }, [companyData, eqTypeData]); 
 
+  //signature
   useEffect(() => {
     if (!formData) return;
   
@@ -191,6 +227,21 @@ export default function MaintenanceFormScreen() {
     }
   }, [companyOptions, companyName]);
 
+  //equipment Id
+  useEffect(() => {
+    if (!isEditing) return;
+    if (!equipmentOptions.length) return;
+    if (!formData?.equipmentId) return;
+  
+    const matched = equipmentOptions.find(
+      e => e.name.trim() === formData.equipmentId.trim()
+    );
+  
+    if (matched) {
+      setEquipmentId(matched.id);
+    }
+  }, [isEditing, equipmentOptions, formData]);
+  
   useEffect(() => {
     if (!isEditing) return;
     if (!equipmentTypeOptions.length) return;
@@ -205,19 +256,20 @@ export default function MaintenanceFormScreen() {
     }
   }, [isEditing, equipmentTypeOptions, formData]);
 
-  
+
   //Equipment ID
   useEffect(() => {
-    
-    if (equipmentListData?.data?.equipmentList.equip_id) {
-      const formatted = equipmentListData.data.equipmentList.equip_id.map((equipId: string) => ({
-        id: equipId,          
-        name: equipId,       
+    const list = equipmentListData?.data?.equipmentList;
+  
+    if (list?.ids && list?.equip_id) {
+      const formatted = list.equip_id.map((equipCode: string, index: number) => ({
+        id: String(list.ids[index]),   
+        name: equipCode,               
       }));
   
       setEquipmentOptions(formatted);
     } else {
-      setEquipmentOptions([]); 
+      setEquipmentOptions([]);
     }
   }, [equipmentListData]);
   
@@ -446,11 +498,11 @@ export default function MaintenanceFormScreen() {
         is_otp_verified: "Y",
       });
 
-      // console.log("=== FORMDATA START ===");
-      // for (const pair of formData.entries()) {
-      //   console.log(pair[0], pair[1]);
-      // }
-      // console.log("=== FORMDATA END ===");
+      console.log("=== FORMDATA START ===");
+      for (const pair of formData.entries()) {
+        console.log(pair[0], pair[1]);
+      }
+      console.log("=== FORMDATA END ===");
       
       const res = await mutateAsync({ formData});
       
@@ -513,15 +565,14 @@ export default function MaintenanceFormScreen() {
             }}
           />
           {/*Equipment ID */}
-          {equipmentTypeId && (
-            <FormDropdown
-              label="Equipment ID"
-              placeholder="Select equipment"
-              options={equipmentOptions}
-              selectedValue={equipmentId}
-              onValueChange={setEquipmentId}
-            />
-          )}
+          <FormDropdown
+            label="Equipment ID"
+            placeholder="Select equipment"
+            options={equipmentOptions} // { id, name }
+            selectedValue={equipmentId}
+            onValueChange={(id) => setEquipmentId(id)}
+          />
+
           <FormInput label="Client Name" placeholder="Enter client name" value={clientName} onChangeText={setClientName} />
           <FormInput label="Client Contact No" placeholder="Enter client contact" value={clientContactNo} onChangeText={setClientContactNo} keyboardType="phone-pad" />
            {/* OTP Section */}

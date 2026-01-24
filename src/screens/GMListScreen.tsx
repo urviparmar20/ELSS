@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { View, StyleSheet, FlatList, TextInput, Pressable } from "react-native";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
@@ -42,7 +42,9 @@ export default function GMListScreen() {
     if (data?.data?.generalMaintenance) {
       setgMList(data.data?.generalMaintenance);
     }
-  }, [data]);  
+  }, [data]); 
+
+ 
 
   const getStatusColor = (isPending: "Y" | "N") => {
     return isPending === "Y" ? colors.warning : colors.success;

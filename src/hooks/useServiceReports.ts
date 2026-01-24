@@ -10,7 +10,7 @@ export const useServiceReports = (page: number) => {
   return useQuery({
     queryKey: ["service-reports", userId, page],
     enabled: !!token && !!userId,
-
+    retry: false,
     queryFn: async () => {
       const raw = await serviceReportsListApi({
         userId: userId as number,

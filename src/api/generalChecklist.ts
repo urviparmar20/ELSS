@@ -20,8 +20,6 @@ export const getGeneralChecklistApi = async ({
         },
       }
     );
-console.log('response',response);
-
     return response.data;
 
   } 
