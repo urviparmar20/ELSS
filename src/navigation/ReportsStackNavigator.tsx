@@ -9,7 +9,6 @@ export type ReportsStackParamList = {
   ServiceReportsList: undefined;
   ServiceReportDetail: { id: string };
   ServiceReportForm: { report?: any };
-
 };
 
 const Stack = createNativeStackNavigator<ReportsStackParamList>();

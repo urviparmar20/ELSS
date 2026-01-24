@@ -20,11 +20,23 @@ export const getGeneralChecklistApi = async ({
         },
       }
     );
+console.log('response',response);
 
     return response.data;
 
-  } catch (error) {
-    console.log("API ERROR (general-maintenance-checklist):", error);
-    throw error;
+  } 
+  // catch (error) {
+  //   console.log("API ERROR (general-maintenance-checklist):", error);
+  //   throw error;
+  // }
+  catch (error: any) {
+    console.log(
+      "API ERROR (general-maintenance-checklist):",
+      error?.response?.data
+    );
+  
+    // throw backend response so React Query can access it
+    throw error?.response?.data;
   }
+  
 };

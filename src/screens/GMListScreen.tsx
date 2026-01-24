@@ -1,11 +1,12 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View, StyleSheet, FlatList, TextInput, Pressable } from "react-native";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect } from "@react-navigation/native";
+import { useQueryClient } from "@tanstack/react-query";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { ThemedText } from "../components/ThemedText";
 import { ThemedView } from "../components/ThemedView";
-// import { Card } from "@/components/Card";
 import { useTheme } from "../hooks/useTheme";
 // import { useData, MaintenanceRecord } from "@/contexts/DataContext";
 import { Colors, Spacing, BorderRadius } from "../constants/theme";
@@ -14,6 +15,8 @@ import type { MaintenanceStackParamList } from "../navigation/MaintenanceStackNa
 import { useGeneralMaintenanceList } from "../hooks/useGeneralMaintenanceList";
 import { useSelector } from 'react-redux';
 import { RootState } from '../store';
+import { Card } from "../components/Card";
+import { MaintenanceRecord } from "../types/maintenance";
 
 
 type MaintenanceNavigationProp = NativeStackNavigationProp<MaintenanceStackParamList>;
@@ -24,106 +27,120 @@ export default function GMListScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const navigation = useNavigation<MaintenanceNavigationProp>();
   const { theme, isDark } = useTheme();
-  // const { maintenanceRecords } = useData();
   const colors = Colors.light;
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  
-  const { data, isLoading, error, refetch, isFetching } =
+  const [gMList, setgMList] = useState<any[]>([]);
+// console.log('gMList',gMList);
+
+  const { data, isLoading } =
   useGeneralMaintenanceList(currentPage);
 
-  
-
-  // const filteredRecords = maintenanceRecords.filter((record) => {
-  //   const matchesSearch =
-  //     record.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-  //     record.mcSerialNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-  //     record.equipmentTypeName.toLowerCase().includes(searchQuery.toLowerCase());
-  //   const matchesFilter = filterStatus ? record.status === filterStatus : true;
-  //   return matchesSearch && matchesFilter;
-  // });
-
-  // const totalPages = Math.ceil(filteredRecords.length / ITEMS_PER_PAGE);
-  // const paginatedRecords = filteredRecords.slice(
-  //   (currentPage - 1) * ITEMS_PER_PAGE,
-  //   currentPage * ITEMS_PER_PAGE
-  // );
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "completed":
-        return colors.success;
-      case "pending":
-        return colors.warning;
-      case "overdue":
-        return colors.error;
-      default:
-        return colors.textSecondary;
+  useEffect(() => {
+    if (data?.data?.generalMaintenance) {
+      setgMList(data.data?.generalMaintenance);
     }
+  }, [data]);  
+
+  const getStatusColor = (isPending: "Y" | "N") => {
+    return isPending === "Y" ? colors.warning : colors.success;
   };
 
+  const getStatusLabel = (isPending: "Y" | "N") => {
+    return isPending === "Y" ? "pending" : "completed";
+  };
+
+  const getStatusText = (isPending: "Y" | "N") => {
+    return isPending === "Y" ? "Pending" : "Completed";
+  };
+
+  const filteredReports = (gMList ?? []).filter((report: any) => {
+    const matchesSearch =
+        (report.company_name || "").toLowerCase().includes(searchQuery) ||
+        (report.mc || "").toLowerCase().includes(searchQuery) ||
+        (report.equipment_type || "").toLowerCase().includes(searchQuery);
+      const matchesFilter = filterStatus
+  ? getStatusLabel(report.is_pending) === filterStatus
+  : true;
+
+      return matchesSearch && matchesFilter;
+    });
+  
+  const paginatedReports = filteredReports;
+  
+  const queryClient = useQueryClient();
+
+  useFocusEffect(
+    React.useCallback(() => {
+      queryClient.invalidateQueries({
+        queryKey: ["general-maintenance"],
+      });
+    }, [])
+  );
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
   };
 
-  // const renderItem = ({ item }: { item: MaintenanceRecord }) => (
-  //   <Card
-  //     elevation={1}
-  //     style={styles.listItem}
-  //     onPress={() => navigation.navigate("MaintenanceDetail", { id: item.id })}
-  //   >
-  //     <View style={styles.listItemHeader}>
-  //       <View style={styles.listItemInfo}>
-  //         <ThemedText type="h4" numberOfLines={1}>
-  //           {item.companyName}
-  //         </ThemedText>
-  //         <ThemedText type="small" style={{ color: colors.textSecondary }}>
-  //           {item.mcSerialNo}
-  //         </ThemedText>
-  //       </View>
-  //       <View
-  //         style={[
-  //           styles.statusBadge,
-  //           { backgroundColor: getStatusColor(item.status) + "20" },
-  //         ]}
-  //       >
-  //         <ThemedText
-  //           type="small"
-  //           style={[styles.statusText, { color: getStatusColor(item.status) }]}
-  //         >
-  //           {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
-  //         </ThemedText>
-  //       </View>
-  //     </View>
+  const renderItem = ({ item }: { item: MaintenanceRecord }) => (
+    <Card
+      elevation={1}
+      style={styles.listItem}
+      // onPress={() => navigation.navigate("ServiceReportDetail", { id: item.id })}
+    >
+      <View style={styles.listItemHeader}>
+        <View style={styles.listItemInfo}>
+          <ThemedText type="h4" numberOfLines={1}>
+            {item.company_name}
+          </ThemedText>
+          <ThemedText type="small" style={{ color: colors.textSecondary }}>
+            {item.equipment}
+          </ThemedText>
+        </View>
+        <View
+          style={[
+            styles.statusBadge,
+            { backgroundColor: getStatusColor(item.is_pending) + "20" },
+          ]}
+        >
+          <ThemedText
+            type="small"
+            style={[styles.statusText, { color: getStatusColor(item.is_pending) }]}
+          >
+            {getStatusText(item.is_pending)}
+          </ThemedText>
+        </View>
+      </View>
 
-  //     <View style={styles.listItemDetails}>
-  //       <View style={styles.detailRow}>
-  //         <Feather name="tool" size={14} color={colors.textSecondary} />
-  //         <ThemedText type="small" style={{ color: colors.textSecondary, marginLeft: 6 }}>
-  //           {item.equipmentTypeName}
-  //         </ThemedText>
-  //       </View>
-  //       <View style={styles.detailRow}>
-  //         <Feather name="calendar" size={14} color={colors.textSecondary} />
-  //         <ThemedText type="small" style={{ color: colors.textSecondary, marginLeft: 6 }}>
-  //           {formatDate(item.createdAt)}
-  //         </ThemedText>
-  //       </View>
-  //     </View>
+      <View style={styles.listItemDetails}>
+        <View style={styles.detailRow}>
+          <Feather name="tool" size={14} color={colors.textSecondary} />
+          <ThemedText type="small" style={{ color: colors.textSecondary, marginLeft: 6 }}>
+            {item.equipment_type}
+          </ThemedText>
+        </View>
+        <View style={styles.detailRow}>
+          <Feather name="calendar" size={14} color={colors.textSecondary} />
+          <ThemedText type="small" style={{ color: colors.textSecondary, marginLeft: 6 }}>
+            {formatDate(item.current_date)}
+          </ThemedText>
+        </View>
+      </View>
 
-  //     <View style={styles.listItemActions}>
-  //       <Pressable
-  //         style={[styles.actionButton, { backgroundColor: colors.primary + "20" }]}
-  //         onPress={() => navigation.navigate("MaintenanceForm", { id: item.id })}
-  //       >
-  //         <Feather name="edit-2" size={16} color={colors.primary} />
-  //       </Pressable>
-  //     </View>
-  //   </Card>
-  // );
+      <View style={styles.listItemActions}>
+        <Pressable
+          style={[styles.actionButton, { backgroundColor: colors.primary + "20" }]}
+          onPress={() =>
+            navigation.navigate("GMForm", { report: item })
+          }
+        >
+          <Feather name="edit-2" size={16} color={colors.primary} />
+        </Pressable>
+      </View>
+    </Card>
+  );
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
@@ -168,7 +185,7 @@ export default function GMListScreen() {
           <Feather name="search" size={20} color={colors.textSecondary} />
           <TextInput
             style={[styles.searchTextInput, { color: theme.text }]}
-            placeholder="Search maintenance..."
+            placeholder="Search reports..."
             placeholderTextColor={colors.textSecondary}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -187,8 +204,8 @@ export default function GMListScreen() {
         <FilterChip label="Completed" value="completed" />
       </View>
 
-      {/* <FlatList
-        data={paginatedRecords}
+      <FlatList
+        data={paginatedReports}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
         contentContainerStyle={[
@@ -196,29 +213,8 @@ export default function GMListScreen() {
           { paddingBottom: tabBarHeight + Spacing["5xl"] },
         ]}
         ListEmptyComponent={renderEmptyState}
-        ListFooterComponent={totalPages > 1 ? (
-          <View style={styles.pagination}>
-            <Pressable
-              style={[styles.pageButton, { backgroundColor: currentPage === 1 ? colors.backgroundSecondary : colors.primary }]}
-              onPress={() => setCurrentPage(Math.max(1, currentPage - 1))}
-              disabled={currentPage === 1}
-            >
-              <Feather name="chevron-left" size={20} color={currentPage === 1 ? colors.textSecondary : "#fff"} />
-            </Pressable>
-            <ThemedText type="body" style={styles.pageInfo}>
-              Page {currentPage} of {totalPages}
-            </ThemedText>
-            <Pressable
-              style={[styles.pageButton, { backgroundColor: currentPage === totalPages ? colors.backgroundSecondary : colors.primary }]}
-              onPress={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-              disabled={currentPage === totalPages}
-            >
-              <Feather name="chevron-right" size={20} color={currentPage === totalPages ? colors.textSecondary : "#fff"} />
-            </Pressable>
-          </View>
-        ) : null}
         showsVerticalScrollIndicator={false}
-      /> */}
+      />
 
       <Pressable
         style={[
@@ -293,8 +289,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   listItemDetails: {
-    flexDirection: "row",
-    gap: Spacing.lg,
+    gap: Spacing.xs,
     marginBottom: Spacing.md,
   },
   detailRow: {

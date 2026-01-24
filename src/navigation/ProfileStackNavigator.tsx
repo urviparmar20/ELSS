@@ -4,6 +4,7 @@ import ProfileScreen from "../screens/ProfileScreen";
 // import EditProfileScreen from "@/screens/EditProfileScreen";
 // import ChangePasswordScreen from "@/screens/ChangePasswordScreen";
 import { useScreenOptions } from "../hooks/useScreenOptions";
+import ChangePasswordScreen from "../screens/ChangePasswordScreen";
 
 export type ProfileStackParamList = {
   Profile: undefined;
@@ -32,7 +33,7 @@ export default function ProfileStackNavigator() {
           presentation: "modal",
           headerTitle: "Edit Profile",
         }}
-      />
+      />*/}
       <Stack.Screen
         name="ChangePassword"
         component={ChangePasswordScreen}
@@ -40,7 +41,7 @@ export default function ProfileStackNavigator() {
           presentation: "modal",
           headerTitle: "Change Password",
         }}
-      /> */}
+      /> 
     </Stack.Navigator>
   );
 }

@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { View, StyleSheet, Alert, Pressable } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useQueryClient } from "@tanstack/react-query";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { ThemedText } from "../components/ThemedText";
 import { ThemedView } from "../components/ThemedView";
 import { Card } from "../components/Card";
+import { useSelector } from "react-redux";
+import { RootState } from "../store";
 import { CustomButton } from "../components/CustomButton";
 import { FormInput } from "../components/FormInput";
 import { FormDropdown } from "../components/FormDropdown";
@@ -21,21 +24,29 @@ import { useCompanies } from '../hooks/useCompanies';
 import { useEquipmentTypeList } from "../hooks/useEquipmentType";
 import { useEquipmentListByType } from "../hooks/useEquipmentListByType";
 import { useGeneralChecklist } from "../hooks/useGeneralChecklist";
+import { Toast } from "react-native-toast-message/lib/src/Toast";
+import { useGenerateOTPSR } from "../hooks/useGenerateOTPSR";
+import { useVerifyOTPSR } from "../hooks/useVerifyOTPSR";
+import CustomLoader from "../components/CustomLoader";
+import { CustomAlert } from "../components/CustomAlert";
+import { useStoreGM } from "../hooks/useStoreGM";
+import { buildGMFormData } from "../utils/buildGMFormData";
+import { validateForm } from "../utils/validateGM";
+import { mapRawGM } from "../utils/mapRawGM";
 
 type MaintenanceFormRouteProp = RouteProp<MaintenanceStackParamList, "GMForm">;
 type MaintenanceNavigationProp = NativeStackNavigationProp<MaintenanceStackParamList>;
 
 const DEFAULT_PARTS_LUBRICANTS: PartsLubricants = {
   engineAirFilter: "",
-  compressorAirFilter: "",
-  oilFilter: "",
-  compressorOilFilter: "",
-  racorFilter: "",
+  engineOilFilter: "",
+  engineFuelFilter: "",
+  preFilter: "",
   waterFilter: "",
-  compressorOil: "",
+  hydraulicFilter: "",
   engineOil: "",
-  fuelFilter: "",
-  otherPartsSupplied: "",
+  hydraulicOil: "",
+  gearOil: "",
 };
 
 export default function MaintenanceFormScreen() {
@@ -43,52 +54,96 @@ export default function MaintenanceFormScreen() {
   const navigation = useNavigation<MaintenanceNavigationProp>();
   const route = useRoute<MaintenanceFormRouteProp>();
   const colors = Colors.light;
-
-  const isEditing = !!route.params?.id;
+  const queryClient = useQueryClient();
+  const token = useSelector((state: RootState) => state.auth.token);
+  const userId = useSelector((state: RootState) => state.auth.user?.user_id);
   
-  const existingRecord = route.params?.report || null;
+  const existingReport = route.params?.report || null;
+  // console.log('existingReport',route.params?.report);
+
+  const formData = React.useMemo(
+    () => (existingReport ? mapRawGM(existingReport) : null),
+    [existingReport]
+  );
+  // console.log('formData',formData);
+
+  const isEditing = !!existingReport;
 
   const [companyOptions, setCompanyOptions] = useState<{ id: string; name: string }[]>([]);
   const [equipmentTypeOptions, setEquipmentTypeOptions] = useState<
   { id: string; name: string }[]>([]);
   const [equipmentOptions, setEquipmentOptions] = useState<{ id: string; name: string }[]>([]);
 
-  const [companyId, setCompanyId] = useState(existingRecord?.companyId || "");
-  const [mcSerialNo, setMcSerialNo] = useState(existingRecord?.mcSerialNo || "");
-  const [hourMeter, setHourMeter] = useState(existingRecord?.hourMeter || "");
-  const [jobNo, setJobNo] = useState(existingRecord?.jobNo || "");
-  const [address, setAddress] = useState(existingRecord?.address || "");
-  const [contactPerson, setContactPerson] = useState(existingRecord?.contactPerson || "");
-  const [contactNo, setContactNo] = useState(existingRecord?.contactNo || "");
-  const [email, setEmail] = useState(existingRecord?.email || "");
+  const [companyId, setCompanyId] = useState(formData?.companyId || "");
+  const [mcSerialNo, setMcSerialNo] = useState(formData?.mcSerialNo || "");
+  const [hourMeter, setHourMeter] = useState(formData?.hourMeter || "");
+  const [jobNo, setJobNo] = useState(formData?.jobNo || "");
+  const [address, setAddress] = useState(formData?.address || "");
+  const [otherPart, setOtherPart] = useState(formData?.otherPartsSupplied || "");
 
-  const [equipmentTypeId, setEquipmentTypeId] = useState(existingRecord?.equipmentTypeId || "");
-  const [equipmentId, setEquipmentId] = useState(existingRecord?.equipmentId || "");
-  const [clientName, setClientName] = useState(existingRecord?.clientName || "");
-  const [clientContactNo, setClientContactNo] = useState(existingRecord?.clientContactNo || "");
-  const [otp, setOTP] = useState("");
-  const [serviceTechnicianName, setServiceTechnicianName] = useState(existingRecord?.serviceTechnicianName  || "");
-  const [serviceTimes, setServiceTimes] = useState<ServiceTime[]>(existingRecord?.serviceTimes || [{ date: new Date().toISOString().split("T")[0], startTime: "09:00", endTime: "17:00" }]);
-  const [weeklyChecking, setWeeklyChecking] = useState(existingRecord?.weeklyChecking || false);
-  const [monthlyServicing, setMonthlyServicing] = useState(existingRecord?.monthlyServicing || false);
-  const [halfYearlyServicing, setHalfYearlyServicing] = useState(existingRecord?.halfYearlyServicing || false);
-  const [yearlyServicing, setYearlyServicing] = useState(existingRecord?.yearlyServicing || false);
-  const [washing, setWashing] = useState(existingRecord?.washing || false);
-  const [cleaning, setCleaning] = useState(existingRecord?.cleaning || false);
-  const [remarks, setRemarks] = useState(existingRecord?.remarks || "");
-  const [checklist, setChecklist] = useState<Record<string, boolean>>(existingRecord?.checklist || {});
-  const [partsLubricants, setPartsLubricants] = useState<PartsLubricants>(existingRecord?.partsLubricants || DEFAULT_PARTS_LUBRICANTS);
-  const [technicianSignature, setTechnicianSignature] = useState(existingRecord?.technicianSignature || "");
-  const [supervisorSignature, setSupervisorSignature] = useState(existingRecord?.supervisorSignature || "");
-  const [serviceDepartment, setServiceDepartment] = useState(existingRecord?.serviceDepartment || "Field Service");
-  const [completionDate, setCompletionDate] = useState(existingRecord?.completionDate || new Date().toISOString().split("T")[0]);
+  const [contactPerson, setContactPerson] = useState(formData?.contactPerson || "");
+  const [contactNo, setContactNo] = useState(formData?.contactNo || "");
+  const [email, setEmail] = useState(formData?.email || "");
+
+  const [equipmentTypeId, setEquipmentTypeId] = useState(formData?.equipmentTypeId || "");
+  const [equipmentId, setEquipmentId] = useState(formData?.equipmentId || "");
+  const [clientName, setClientName] = useState(formData?.clientName || "");
+  const [clientContactNo, setClientContactNo] = useState(formData?.clientContactNo || "");
+  const [serviceTechnicianName, setServiceTechnicianName] = useState(formData?.serviceTechnicianName  || "");
+  const [serviceTimes, setServiceTimes] = useState<ServiceTime[]>(formData?.serviceTimes || [{ date: new Date().toISOString().split("T")[0], startTime: "09:00", endTime: "17:00" }]);
+  const [services, setServices] = useState({
+    weeklyChecking: false,
+    monthlyServicing: false,
+    halfYearlyServicing: false,
+    yearlyServicing: false,
+    washing: false,
+    cleaning: false,
+  });
+
+  const [remarks, setRemarks] = useState(formData?.remarks || "");
+  const [checklist, setChecklist] = useState<Record<string, boolean>>(formData?.checklist || {});
+  const [partsLubricants, setPartsLubricants] = useState<PartsLubricants>(formData?.partsLubricants || DEFAULT_PARTS_LUBRICANTS);
+  const [companyName, setCompanyName] = useState(formData?.companyName || "");
+
+  const [technicianSignature, setTechnicianSignature] = useState("");
+  const [supervisorSignature, setSupervisorSignature] = useState("");
+  const [serviceDepartment, setServiceDepartment] = useState(formData?.serviceDepartment || "");
+  const [completionDate, setCompletionDate] = useState(formData?.completionDate || new Date().toISOString().split("T")[0]);
   const [isLoading, setIsLoading] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [showAlert, setShowAlert] = useState(false);
+  const [showVerify, setShowVerify] = useState(false);
 
-  const { data: companyData, error } = useCompanies();
+  const { data: companyData } = useCompanies();
   const { data: eqTypeData } = useEquipmentTypeList();
   const { data: equipmentListData } = useEquipmentListByType(equipmentTypeId);
-  const { data: checklistData } = useGeneralChecklist(equipmentTypeId);
+  const { data: checklistData, isError, error, } = useGeneralChecklist(equipmentTypeId);
+  const {
+    mutate: generateOtp,
+    isPending: isOtpPending,
+    isSuccess,
+  } = useGenerateOTPSR();
 
+  const {
+    mutate: verifyOtp,
+    isPending: isVerifying,
+    isSuccess: isSuccessVerify
+  } = useVerifyOTPSR();
+
+  const { mutateAsync, isPending } = useStoreGM(token);
+  console.log('error',error);
+  
+
+  useEffect(() => {
+    if (isError && error) {
+      Toast.show({
+        type: "error",
+        text1: error.message,
+      });
+    }
+  }, [isError, error]);
+  
+  //Company
   useEffect(() => {
     
       const company = companyData?.data?.company;
@@ -114,8 +169,41 @@ export default function MaintenanceFormScreen() {
 
       setEquipmentTypeOptions(eqTypes);
     }
-  }, [companyData, eqTypeData]);  
+  }, [companyData, eqTypeData]); 
 
+  useEffect(() => {
+    if (!formData) return;
+  
+    setTechnicianSignature(formData.signature_technician || "");
+    setSupervisorSignature(formData.signature_supervisor || "");
+  }, [formData]);
+
+  useEffect(() => {
+    if (!companyOptions.length) return;
+    if (!companyName) return;
+  
+    const matched = companyOptions.find(
+      c => c.name.trim() === companyName.trim()
+    );
+  
+    if (matched) {
+      setCompanyId(matched.id);
+    }
+  }, [companyOptions, companyName]);
+
+  useEffect(() => {
+    if (!isEditing) return;
+    if (!equipmentTypeOptions.length) return;
+    if (!formData?.equipmentTypeName) return;
+  
+    const matched = equipmentTypeOptions.find(
+      t => t.name.trim() === formData.equipmentTypeName.trim()
+    );
+  
+    if (matched) {
+      setEquipmentTypeId(matched.id);
+    }
+  }, [isEditing, equipmentTypeOptions, formData]);
 
   
   //Equipment ID
@@ -162,9 +250,6 @@ export default function MaintenanceFormScreen() {
     setChecklist(newChecklist);
   };
 
-  const handleGenerateOTP = () => {
-
-  }
 
   const isAllChecklistSelected = checklistData?.data
   ? (Object.values(checklistData.data).flat() as string[]).every(item => checklist[item])
@@ -188,62 +273,208 @@ export default function MaintenanceFormScreen() {
     setPartsLubricants((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = async () => {
-    if (!companyId) {
-      Alert.alert("Validation Error", "Please select a company");
+  const handleGenerateOtpClick = () => {
+    if (!clientContactNo || clientContactNo.trim().length === 0) {
+      Toast.show({
+        type: "error",
+        text1: "Validation Error",
+        text2: "Client contact number is required",
+      });
       return;
     }
-    if (!mcSerialNo) {
-      Alert.alert("Validation Error", "Please enter M/C or Serial No");
-      return;
-    }
-
-    setIsLoading(true);
-    try {
   
-
-      const recordData = {
-        companyId,
-        companyName: "",
-        email: "",
-        mcSerialNo,
-        hourMeter,
-        jobNo,
-        address,
-        contactPerson,
-        contactNo,
-        equipmentTypeId,
-        equipmentTypeName: "",
-        equipmentId,
-        equipmentName: "",
-        clientName,
-        clientContactNo,
-        serviceTechnicianName,
-        serviceTimes,
-        weeklyChecking,
-        monthlyServicing,
-        halfYearlyServicing,
-        yearlyServicing,
-        washing,
-        cleaning,
-        remarks,
-        checklist,
-        partsSuppliedText: "",
-        partsLubricants,
-        technicianSignature,
-        supervisorSignature,
-        serviceDepartment,
-        completionDate,
-        images: [],
-        status: "pending" as const,
-      };
-    } catch (error) {
-      Alert.alert("Error", "Failed to save record");
-    } finally {
-      setIsLoading(false);
+    if (clientContactNo.length < 8) {
+      Toast.show({
+        type: "error",
+        text1: "Invalid Number",
+        text2: "Please enter a valid contact number",
+      });
+      return;
     }
+  
+    setShowAlert(true);
   };
 
+  const generateOTP = async() => {
+    setShowAlert(false);
+
+    generateOtp(clientContactNo, {
+      onSuccess: () => {
+        setShowVerify(true);
+      },
+      onError: () => {
+        Toast.show({
+          type: "error",
+          text1: "Error",
+          text2: "Failed to generate OTP",
+        });
+      },
+    });
+  }
+
+  const veriftOtp = () => {
+      if (!otp || otp.length === 0) {
+        Toast.show({
+          type: "error",
+          text1: "Validation Error",
+          text2: "Please enter OTP",
+        });
+        return;
+      }
+    
+      verifyOtp(otp, {
+        onSuccess: () => {
+          setShowVerify(false);
+          Toast.show({
+            type: "success",
+            text1: "OTP Verified",
+          });
+        },
+        onError: () => {
+          Toast.show({
+            type: "error",
+            text1: "Invalid OTP",
+            text2: "Please try again",
+          });
+        },
+      });
+  }
+
+   // --- Separate partsLubricants properly ---
+   const servicingPartsLubricants: Record<string, string> = {};
+
+   Object.entries(partsLubricants).forEach(([key, value]) => {
+   
+       servicingPartsLubricants[key] = value;
+ 
+   });
+   useEffect(() => {
+    if (!isEditing) return;
+    if (!checklistData?.data) return;
+    if (!formData?.checklist) return;
+  
+    setChecklist(formData.checklist);
+  }, [isEditing, checklistData, formData]);
+  
+
+   const getSelectedServices = (): string[] => {
+    const SERVICE_LABELS: Record<string, string> = {
+      weeklyChecking: "Weekly Checking",
+      monthlyServicing: "Monthly Servicing",
+      halfYearlyServicing: "Half Yearly Servicing",
+      yearlyServicing: "Yearly Servicing",
+      washing: "Washing",
+      cleaning: "Cleaning",
+    };
+  
+    return Object.entries(services)
+      .filter(([_, checked]) => checked)
+      .map(([key]) => SERVICE_LABELS[key]);
+  };
+  const selectedServices = getSelectedServices();
+
+  
+  const handleSubmit = async () => {
+  
+    const { valid, errors } = validateForm({
+      companyId,
+      address,
+      mcSerialNo,
+      hourMeter,
+      jobNo,
+      equipmentTypeId,
+      equipmentId,
+      clientName,
+      clientContactNo,
+      serviceTimes,
+      remarks,
+      technicianSignature,
+      supervisorSignature,
+      serviceDepartment,
+      contactPerson,
+      contactNo,
+      checklist,
+      services
+    });
+    
+    if (!valid) {
+      Toast.show({
+        type: "error",
+        text1: "Validation Error",
+        text2: errors[0],
+      });
+      return;
+    }
+    
+    try {
+      const formData = buildGMFormData({
+        maintenance_id: isEditing ? existingReport.id : 0,
+        company_name: companyId,
+        email,
+        address,
+        contact_person: contactPerson,
+        contact_no: contactNo,
+        equipment_type: equipmentTypeId,
+        equipment_id: equipmentId,
+        job_no: jobNo,
+        hr_meter: hourMeter,
+        serial_no: mcSerialNo,
+        mc: mcSerialNo,
+        remarks,
+        services: selectedServices,
+        technician: String(userId),
+        client_name: clientName,
+        client_tel_no: clientContactNo,
+        service_technician: serviceTechnicianName,
+        date_list: serviceTimes.map(t => t.date),
+        time_list: {
+          start: serviceTimes.map(t => t.startTime),
+          end: serviceTimes.map(t => t.endTime),
+        },
+        job_descriptions: remarks,
+        servicing_parts_lubricants_list: servicingPartsLubricants,
+        other_parts_supplied_list: otherPart,
+        signature_technician: technicianSignature
+          ? { uri: technicianSignature, name: "technician-signature.jpg", type: "image/jpeg" }
+          : undefined,
+        signature_supervisor: supervisorSignature
+          ? { uri: supervisorSignature, name: "client-signature.jpg", type: "image/jpeg" }
+          : undefined,
+        service_department: serviceDepartment,
+        current_date: completionDate instanceof Date ? completionDate.toISOString() : completionDate,
+        operation_check_list: checklist,
+        is_otp_verified: "Y",
+      });
+
+      // console.log("=== FORMDATA START ===");
+      // for (const pair of formData.entries()) {
+      //   console.log(pair[0], pair[1]);
+      // }
+      // console.log("=== FORMDATA END ===");
+      
+      const res = await mutateAsync({ formData});
+      
+      if (res) {
+        queryClient.invalidateQueries({
+          queryKey: ["general-maintenace"],
+        });
+        Toast.show({
+          type: "success",
+          text1: "Success",
+          text2: "General Maintenace saved successfully.",
+        });
+        navigation.goBack()
+      }
+    } catch (error) {
+      console.error("Failed to submit General maintenace:", error);
+       Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "Failed to submit General maintenace",
+      });
+      
+    }
+  };
   return (
     <ThemedView style={styles.container}>
       <KeyboardAwareScrollViewCompat contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + Spacing.xl }]}>
@@ -293,20 +524,47 @@ export default function MaintenanceFormScreen() {
           )}
           <FormInput label="Client Name" placeholder="Enter client name" value={clientName} onChangeText={setClientName} />
           <FormInput label="Client Contact No" placeholder="Enter client contact" value={clientContactNo} onChangeText={setClientContactNo} keyboardType="phone-pad" />
-          <View style={styles.timeRow}>
-            <View style={styles.serviceTimeField}>
-              <FormInput label="Enter OTP" placeholder="Enter OTP" value={otp} onChangeText={setOTP} keyboardType="phone-pad" />
-            </View>
-            <View style={styles.serviceTimeField}>
-              <CustomButton 
-                onPress={handleGenerateOTP} 
-                disabled={isLoading} 
-                style={[styles.submitButton, { backgroundColor: colors.primary, marginTop:30 }]}
-              >
-                Generate OTP
-              </CustomButton>
-            </View>
-          </View>       
+           {/* OTP Section */}
+           {
+            isEditing ? 
+              <ThemedText type="body" style={styles.verifiedText}>Contact Number Verified</ThemedText> : 
+                <View style={styles.twoColumn}>
+                  <View style={styles.inputHalf}>
+                    <FormInput label="Enter OTP" placeholder="Enter OTP" value={otp} onChangeText={setOtp} /> 
+                  </View>
+                  <View style={styles.inputHalf}>
+                    {
+                      !showVerify ?
+                      <>
+                        <CustomButton
+                          onPress={handleGenerateOtpClick}
+                          style={[{ backgroundColor: colors.primary, marginTop: Spacing["2xl"] }]}
+                        >
+                        {"Generate OTP"}</CustomButton>
+                        <CustomAlert
+                          visible={showAlert}
+                          title="Confirmation"
+                          message={`Are you sure you want to send OTP to ${clientContactNo}?`}
+                          type="info"
+                          confirmText="Confirm"
+                          cancelText="Cancel"
+                          onConfirm={generateOTP}
+                          onCancel={() => setShowAlert(false)}
+                        />
+                      </>
+                    :
+                      <View style={styles.twoColumn}>
+                        <View style={styles.inputHalf}>
+                          <CustomButton onPress={veriftOtp} style={[ { backgroundColor: colors.primary, marginTop: Spacing.lg }]}>{"Verify"}</CustomButton> 
+                        </View>
+                        <View style={styles.inputHalf}>
+                          <CustomButton onPress={() => {}} style={[ { backgroundColor: colors.primary, marginTop: Spacing.lg }]}>{"Resend"}</CustomButton> 
+                        </View>
+                      </View>
+                    }             
+                  </View>
+                </View>  
+           } 
         </Card>
 
         <Card elevation={1} style={styles.section}>
@@ -353,12 +611,72 @@ export default function MaintenanceFormScreen() {
           )}
 
           <ThemedText type="small" style={[styles.label, { marginTop: Spacing.lg }]}>Service Type</ThemedText>
-          <FormCheckbox label="Weekly Checking" checked={weeklyChecking} onChange={setWeeklyChecking} />
-          <FormCheckbox label="Monthly Servicing" checked={monthlyServicing} onChange={setMonthlyServicing} />
-          <FormCheckbox label="Half Yearly Servicing" checked={halfYearlyServicing} onChange={setHalfYearlyServicing} />
-          <FormCheckbox label="Yearly Servicing" checked={yearlyServicing} onChange={setYearlyServicing} />
-          <FormCheckbox label="Washing" checked={washing} onChange={setWashing} />
-          <FormCheckbox label="Cleaning" checked={cleaning} onChange={setCleaning} />
+          <View style={styles.twoColumn}>
+            <View style={styles.inputHalf}>
+              <FormCheckbox
+                label="Weekly Checking"
+                checked={services.weeklyChecking}
+                onChange={(val) =>
+                  setServices(prev => ({ ...prev, weeklyChecking: val }))
+                }
+              />
+            </View>
+
+            <View style={styles.inputHalf}>
+              <FormCheckbox
+                label="Monthly Servicing"
+                checked={services.monthlyServicing}
+                onChange={(val) =>
+                  setServices(prev => ({ ...prev, monthlyServicing: val }))
+                }
+              />
+            </View>
+
+            <View style={styles.inputHalf}>
+              <FormCheckbox
+                label="Half Yearly Servicing"
+                checked={services.halfYearlyServicing}
+                onChange={(val) =>
+                  setServices(prev => ({ ...prev, halfYearlyServicing: val }))
+                }
+              />
+            </View>
+
+            <View style={styles.inputHalf}>
+              <FormCheckbox
+                label="Yearly Servicing"
+                checked={services.yearlyServicing}
+                onChange={(val) =>
+                  setServices(prev => ({ ...prev, yearlyServicing: val }))
+                }
+              />
+            </View>
+
+            <View style={styles.inputHalf}>
+              <FormCheckbox
+                label="Washing"
+                checked={services.washing}
+                onChange={(val) =>
+                  setServices(prev => ({ ...prev, washing: val }))
+                }
+              />
+            </View>
+
+            <View style={styles.inputHalf}>
+              <FormCheckbox
+                label="Cleaning"
+                checked={services.cleaning}
+                onChange={(val) =>
+                  setServices(prev => ({ ...prev, cleaning: val }))
+                }
+              />
+            </View>
+          </View>
+        </Card>
+
+        <Card elevation={1} style={styles.section}>
+          <ThemedText type="h4" style={styles.sectionTitle}>Remarks</ThemedText>
+          <FormInput label="Remarks/Description" placeholder="Enter any remarks or description" value={remarks} onChangeText={setRemarks} multiline numberOfLines={4} style={{ height: 100, textAlignVertical: "top" }} />
         </Card>
 
         <Card elevation={1} style={styles.section}>
@@ -372,7 +690,7 @@ export default function MaintenanceFormScreen() {
             </Pressable>
           </View>
           {checklistData?.data && Object.entries(checklistData.data).map(([category, items]) => {
-            const itemList = items as string[]; // cast unknown to string[]
+            const itemList = items as string[];
             return (
               <View key={category} style={{ marginBottom: Spacing.md }}>
                 <ThemedText type="h4" style={{ marginBottom: Spacing.sm }}>
@@ -398,36 +716,31 @@ export default function MaintenanceFormScreen() {
               <FormInput label="Engine Air Filter" placeholder="Enter details" value={partsLubricants.engineAirFilter} onChangeText={(v) => updatePartsLubricants("engineAirFilter", v)} />
             </View>
             <View style={styles.inputHalf}>
-              <FormInput label="Engine Oil Filter" placeholder="Enter details" value={partsLubricants.compressorAirFilter} onChangeText={(v) => updatePartsLubricants("compressorAirFilter", v)} />
+              <FormInput label="Engine Oil Filter" placeholder="Enter details" value={partsLubricants.engineOilFilter} onChangeText={(v) => updatePartsLubricants("engineOilFilter", v)} />
             </View>
             <View style={styles.inputHalf}>
-              <FormInput label="Engine Fuel Filter" placeholder="Enter details" value={partsLubricants.oilFilter} onChangeText={(v) => updatePartsLubricants("oilFilter", v)} />
+              <FormInput label="Engine Fuel Filter" placeholder="Enter details" value={partsLubricants.engineFuelFilter} onChangeText={(v) => updatePartsLubricants("engineFuelFilter", v)} />
             </View>
             <View style={styles.inputHalf}>
-              <FormInput label="Pre-Filter" placeholder="Enter details" value={partsLubricants.compressorOilFilter} onChangeText={(v) => updatePartsLubricants("compressorOilFilter", v)} />
+              <FormInput label="Pre-Filter" placeholder="Enter details" value={partsLubricants.preFilter} onChangeText={(v) => updatePartsLubricants("preFilter", v)} />
             </View>
             <View style={styles.inputHalf}>
               <FormInput label="Water Filter" placeholder="Enter details" value={partsLubricants.waterFilter} onChangeText={(v) => updatePartsLubricants("waterFilter", v)} />
             </View>
             <View style={styles.inputHalf}>
-              <FormInput label="Hydraulic Filter" placeholder="Enter details" value={partsLubricants.racorFilter} onChangeText={(v) => updatePartsLubricants("racorFilter", v)} />
+              <FormInput label="Hydraulic Filter" placeholder="Enter details" value={partsLubricants.hydraulicFilter} onChangeText={(v) => updatePartsLubricants("hydraulicFilter", v)} />
             </View>
             <View style={styles.inputHalf}>
               <FormInput label="Engine Oil" placeholder="Enter details" value={partsLubricants.engineOil} onChangeText={(v) => updatePartsLubricants("engineOil", v)} />
             </View>
             <View style={styles.inputHalf}>
-              <FormInput label="Hydraulic Oil" placeholder="Enter details" value={partsLubricants.compressorOil} onChangeText={(v) => updatePartsLubricants("compressorOil", v)} />
+              <FormInput label="Hydraulic Oil" placeholder="Enter details" value={partsLubricants.hydraulicOil} onChangeText={(v) => updatePartsLubricants("hydraulicOil", v)} />
             </View>
             <View style={styles.inputHalf}>
-              <FormInput label="Gear Oil" placeholder="Enter details" value={partsLubricants.compressorOil} onChangeText={(v) => updatePartsLubricants("compressorOil", v)} />
+              <FormInput label="Gear Oil" placeholder="Enter details" value={partsLubricants.gearOil} onChangeText={(v) => updatePartsLubricants("gearOil", v)} />
             </View>
           </View>
-          <FormInput label="Other Parts Supplied" placeholder="Enter other parts and details" value={partsLubricants.otherPartsSupplied} onChangeText={(v) => updatePartsLubricants("otherPartsSupplied", v)} multiline numberOfLines={4} style={{ height: 100, textAlignVertical: "top" }} />
-        </Card>
-
-        <Card elevation={1} style={styles.section}>
-          <ThemedText type="h4" style={styles.sectionTitle}>Remarks</ThemedText>
-          <FormInput label="Remarks/Description" placeholder="Enter any remarks or description" value={remarks} onChangeText={setRemarks} multiline numberOfLines={4} style={{ height: 100, textAlignVertical: "top" }} />
+          <FormInput label="Other Parts Supplied" placeholder="Enter other parts and details" value={otherPart} onChangeText={setOtherPart} />
         </Card>
 
         <Card elevation={1} style={styles.section}>
@@ -439,12 +752,11 @@ export default function MaintenanceFormScreen() {
         </Card>
 
         <View style={[styles.buttonContainer, { paddingBottom: insets.bottom + 100 }]}>
-          <CustomButton 
-            onPress={handleSubmit} 
-            disabled={isLoading} 
-            style={[styles.submitButton, { backgroundColor: colors.primary }]}
-          >
-            {isEditing ? "Update Record" : "Submit Record"}
+          <CustomButton onPress={handleSubmit} style={[styles.submitButton, { backgroundColor: colors.primary }]}>{isPending
+            ? <CustomLoader color="#fff" />
+            : isEditing
+              ? "Update"
+              : "Submit"}
           </CustomButton>
         </View>
       </KeyboardAwareScrollViewCompat>
@@ -505,4 +817,9 @@ const styles = StyleSheet.create({
   inputHalf: {
     width: "48%", 
   },
+  verifiedText: {
+    color: Colors.light.success,
+    textAlign: "center",
+    fontWeight: "bold"
+  }
 });

@@ -28,9 +28,9 @@ export interface PartsLubricants {
 export interface MaintenanceRecord {
   id: string;
   companyId: string;
-  companyName: string;
+  company_name: string;
   email: string;
-  mcSerialNo: string;
+  mc: string;
   hourMeter: string;
   jobNo: string;
   address: string;

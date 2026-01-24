@@ -6,43 +6,40 @@ export type RNFile = {
 };
 
 
-export interface ServiceReportStoreParams {
+export interface GMStoreParams {
   token: string;
-  report_id: number;
-  user_id: number;
+  maintenance_id: number;
   company_name: string;
-  company_address: string;
-  job_no: string;
-  hr_meter: string;
+  email: string;
+  address: string;
+  contact_person: string;
+  contact_no: string;
   equipment_type: string;
   equipment_id: string;
+  job_no: string;
+  hr_meter: string;
   serial_no: string;
   mc: string;
+  remarks: string;
+  services: string[];
+  technician: string;
+  client_name: string;
+  client_tel_no: string;
+  service_technician: string;
   date_list: string[]; // date1..4
   time_list: {
     start: string[]; // start_time1..4
     end: string[];   // end_time1..4
   };
-  operation_check_list: {
-    general_list: Record<string, boolean>;
-    forklift_list: Record<string, boolean>;
-    aerial_platform_list: Record<string, boolean>;
-  };
+  job_descriptions: string;
   servicing_parts_lubricants_list: Record<string, string>;
-  other_parts_supplied_list: string[];
-  description_status_list: {
-    checking: boolean;
-    servicing: boolean;
-    repair: boolean;
-  };
-  description: string;
+  other_parts_supplied_list: string,
   signature_technician?: RNFile;
-  signature_client?: RNFile;
-  filled_date: string;
-  is_chargable: string;
-  client_name: string;
-  client_tel_no: string;
-  images?: RNFile[];
+  signature_supervisor?: RNFile;
+  service_department: string;
+  current_date: string,
+  operation_check_list: Record<string, boolean>,
+  is_otp_verified: string,
 }
 
 export interface ServiceTime {
@@ -52,22 +49,15 @@ export interface ServiceTime {
 }
 
 export interface PartsLubricants {
-  engineAirFilterPri: string;
-  engineAirFilterSec: string;
-  compressorAirFilterPri: string;
-  compressorAirFilterSec: string;
-  oilFilterPri: string;
-  oilFilterSec: string;
-  compressorOilFilterPri: string;
-  fuelFilter: string;
-  racorFilter: string;
-  hydraulicFilter: string;
+  engineAirFilter: string;
+  engineOilFilter: string;
+  engineFuelFilter: string;
+  preFilter: string;
   waterFilter: string;
+  hydraulicFilter: string;
   engineOil: string;
-  compressorOil: string;
   hydraulicOil: string;
-  transmissionOil: string;
-  otherPartsSupplied: string;
+  gearOil: string;
 }
 
 // ----------------------
@@ -75,36 +65,24 @@ export interface PartsLubricants {
 // ----------------------
 
 export type ValidateFormParams = {
-
   companyId: string | null;
   address: string;
+  contactPerson: string;
+  contactNo: string;
   mcSerialNo: string;
   hourMeter: string;
   jobNo: string;
-
   equipmentTypeId: string | null;
   equipmentId: string;
-
   clientName: string;
   clientContactNo: string;
-
   serviceTimes: ServiceTime[];
-
   checklist: Record<string, boolean>;
-
-  checking: boolean;
-  servicing: boolean;
-  repair: boolean;
-
   remarks: string;
-
   technicianSignature: string;
-  clientSignature: string;
-
-  completionDate: string;
-
-  isChargeable: boolean | null;
-
+  supervisorSignature: string;
+  serviceDepartment: string;
+  services: string[];
 };
 
 export type ValidationResult = {
@@ -112,10 +90,10 @@ export type ValidationResult = {
   errors: string[];
 };
 
-export interface ServiceReportRecord {
+export interface MaintenanceRecord {
   id: string;
   companyId: string;
-  companyName: string;
+  company_name: string;
   email: string;
   mcSerialNo: string;
   hourMeter: string;
@@ -124,8 +102,8 @@ export interface ServiceReportRecord {
   contactPerson: string;
   contactNo: string;
   equipmentTypeId: string;
-  equipmentTypeName: string;
-  equipmentId: string;
+  equipment_type: string;
+  equipment: string;
   equipmentName: string;
   clientName: string;
   clientContactNo: string;
@@ -147,6 +125,7 @@ export interface ServiceReportRecord {
   completionDate: string;
   images: string[];
   isChargeable: boolean | null;
-  status: "pending" | "completed" | "overdue" | "draft" | "submit";
-  createdAt: string;
+  current_date: string;
+  is_pending: "Y" | "N";
+
 }

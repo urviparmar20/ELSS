@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, StyleSheet, Alert, Pressable, Platform, Text } from "react-native";
+import { View, StyleSheet, Pressable, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -20,7 +20,6 @@ import { SignatureBox } from "../components/SignatureBox";
 import { KeyboardAwareScrollViewCompat } from "../components/KeyboardAwareScrollViewCompat";
 import { useSelector } from "react-redux";
 import { RootState } from "../store";
-import { useTheme } from "../hooks/useTheme";
 import { ServiceTime, PartsLubricants } from "../types/serviceReport";
 import { Colors, Spacing, BorderRadius } from "../constants/theme";
 import { Feather } from "@expo/vector-icons";
@@ -38,25 +37,28 @@ import {
   DEFAULT_PARTS_LUBRICANTS 
 } from "../constants/checklists";
 import { validateForm } from "../utils/validateServiceReport";
+import CustomLoader from "../components/CustomLoader";
+import { CustomAlert } from "../components/CustomAlert";
+import { useGenerateOTPSR } from "../hooks/useGenerateOTPSR";
+import { useVerifyOTPSR } from "../hooks/useVerifyOTPSR";
 
 type ServiceReportFormRouteProp = RouteProp<ReportsStackParamList, "ServiceReportForm">;
 type ReportsNavigationProp = NativeStackNavigationProp<ReportsStackParamList>;
-type RNImage = {
-  uri: string;
-  name: string;
-  type: string;
-  size?: number;
-  isExisting?: boolean;
-};
-const MAX_IMAGES = 4;
-const MAX_IMAGE_SIZE_MB = 3;
-const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024;
+// type RNImage = {
+//   uri: string;
+//   name: string;
+//   type: string;
+//   size?: number;
+//   isExisting?: boolean;
+// };
+// const MAX_IMAGES = 4;
+// const MAX_IMAGE_SIZE_MB = 3;
+// const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024;
 
 export default function ServiceReportFormScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<ReportsNavigationProp>();
   const route = useRoute<ServiceReportFormRouteProp>();
-  const { theme } = useTheme();
   const colors = Colors.light;
 
   const queryClient = useQueryClient();
@@ -72,11 +74,14 @@ export default function ServiceReportFormScreen() {
     () => (existingReport ? mapRawServiceReport(existingReport.raw) : null),
     [existingReport]
   );
-// console.log('formData===>',formData);
+// console.log('formData',formData);
 
   const isEditing = !!existingReport;
   
-  
+  const [showAlert, setShowAlert] = useState(false);
+  const [showVerify, setShowVerify] = useState(false);
+
+
   const [companyOptions, setCompanyOptions] = useState<{ id: string; name: string }[]>([]);
   const [equipmentTypeOptions, setEquipmentTypeOptions] = useState<{ id: string; name: string }[]>([]);
   const [equipmentOptions, setEquipmentOptions] = useState<{ id: string; name: string }[]>([]);
@@ -97,6 +102,8 @@ export default function ServiceReportFormScreen() {
   const [equipmentId, setEquipmentId] = useState(formData?.equipmentId || "");
 
   const [clientName, setClientName] = useState(formData?.clientName || "");
+  const [otp, setOtp] = useState(formData?.clientName || "");
+
   const [clientContactNo, setClientContactNo] = useState(formData?.clientContactNo || "");
   const [serviceTimes, setServiceTimes] = useState<ServiceTime[]>(formData?.serviceTimes || [{ date: new Date().toISOString().split("T")[0], startTime: "09:00", endTime: "17:00" }]);
 
@@ -120,7 +127,6 @@ export default function ServiceReportFormScreen() {
   const [otherPartsSupplied, setOtherPartsSupplied] = useState<string[]>(
     Array(6).fill("")
   );
-  console.log('formData',formData);
   
   
   const [technicianSignature, setTechnicianSignature] = useState("");
@@ -133,6 +139,20 @@ export default function ServiceReportFormScreen() {
   const { data: companyData } = useCompanies();
   const { data: eqTypeData } = useEquipmentTypeList();
   const { data: equipmentListData } = useEquipmentListByType(equipmentTypeId);
+  const {
+    mutate: generateOtp,
+    isPending: isOtpPending,
+    isSuccess,
+    error,
+  } = useGenerateOTPSR();
+
+  const {
+    mutate: verifyOtp,
+    isPending: isVerifying,
+    isSuccess: isSuccessVerify
+  } = useVerifyOTPSR();
+  
+  
   useEffect(() => {
     if (!isEditing) return;
     if (!equipmentTypeOptions.length) return;
@@ -444,8 +464,8 @@ export default function ServiceReportFormScreen() {
 
   
   const handleSaveAsDraft = async () => {
+    
     const { valid, errors } = validateForm({
-      mode: "draft",
       companyId,
       address,
       mcSerialNo,
@@ -467,6 +487,7 @@ export default function ServiceReportFormScreen() {
       isChargeable
     });
     
+
     if (!valid) {
       Toast.show({
         type: "error",
@@ -512,35 +533,37 @@ export default function ServiceReportFormScreen() {
         client_name: clientName,
         client_tel_no: clientContactNo,
       });
-      console.log("=== FORMDATA START ===");
-      for (const pair of formData.entries()) {
-        console.log(pair[0], pair[1]);
-      }
-      console.log("=== FORMDATA END ===");
+      // console.log("=== FORMDATA START ===");
+      // for (const pair of formData.entries()) {
+      //   console.log(pair[0], pair[1]);
+      // }
+      // console.log("=== FORMDATA END ===");
       
       const res = await mutateAsync({ formData, mode: "draft" });
       if (res) {
         queryClient.invalidateQueries({
           queryKey: ["service-reports"],
         });
-        Alert.alert("Success", "Service report saved as draft", [
-          { text: "OK", onPress: () => navigation.goBack() },
-        ]);
+        Toast.show({
+          type: "success",
+          text1: "Success",
+          text2: "Service report saved as draft",
+        });
+        navigation.goBack()
       }
+
     } catch (error) {
       console.error("Failed to submit service report:", error);
-      Alert.alert("Error", "Failed to submit service report. Please try again.");
        Toast.show({
         type: "error",
         text1: "Error",
-        text2: error || "Failed to draft report",
+        text2: "Failed to draft report",
       });
     }
   };
 
   const handleSubmit = async () => {
     const { valid, errors } = validateForm({
-      mode: "submit",
       companyId,
       address,
       mcSerialNo,
@@ -609,29 +632,32 @@ export default function ServiceReportFormScreen() {
         // images,
       });
 
-      console.log("=== FORMDATA START ===");
-      for (const pair of formData.entries()) {
-        console.log(pair[0], pair[1]);
-      }
-      console.log("=== FORMDATA END ===");
+      // console.log("=== FORMDATA START ===");
+      // for (const pair of formData.entries()) {
+      //   console.log(pair[0], pair[1]);
+      // }
+      // console.log("=== FORMDATA END ===");
       
       const res = await mutateAsync({ formData, mode: "submit" });
       if (res) {
         queryClient.invalidateQueries({
           queryKey: ["service-reports"],
         });
-        Alert.alert("Success", "Service report saved successfully.", [
-          { text: "OK", onPress: () => navigation.goBack() },
-        ]);
+        Toast.show({
+          type: "success",
+          text1: "Success",
+          text2: "Service report saved successfully.",
+        });
+        navigation.goBack()
       }
     } catch (error) {
       console.error("Failed to submit service report:", error);
-      Alert.alert("Error", "Failed to submit service report. Please try again.");
        Toast.show({
         type: "error",
         text1: "Error",
-        text2: error || "Failed to draft report",
+        text2: "Failed to save report",
       });
+      
     }
   };
 
@@ -646,6 +672,73 @@ export default function ServiceReportFormScreen() {
     const [h, m] = time.split(":").map(Number);
     return h * 60 + m;
   };
+  const handleGenerateOtpClick = () => {
+    if (!clientContactNo || clientContactNo.trim().length === 0) {
+      Toast.show({
+        type: "error",
+        text1: "Validation Error",
+        text2: "Client contact number is required",
+      });
+      return;
+    }
+  
+    if (clientContactNo.length < 8) {
+      Toast.show({
+        type: "error",
+        text1: "Invalid Number",
+        text2: "Please enter a valid contact number",
+      });
+      return;
+    }
+  
+    setShowAlert(true);
+  };
+  
+
+  const generateOTP = async() => {
+    setShowAlert(false);
+
+    generateOtp(clientContactNo, {
+      onSuccess: () => {
+        setShowVerify(true);
+      },
+      onError: () => {
+        Toast.show({
+          type: "error",
+          text1: "Error",
+          text2: "Failed to generate OTP",
+        });
+      },
+    });
+  }
+
+  const veriftOtp = () => {
+      if (!otp || otp.length === 0) {
+        Toast.show({
+          type: "error",
+          text1: "Validation Error",
+          text2: "Please enter OTP",
+        });
+        return;
+      }
+    
+      verifyOtp(otp, {
+        onSuccess: () => {
+          setShowVerify(false);
+          Toast.show({
+            type: "success",
+            text1: "OTP Verified",
+          });
+        },
+        onError: () => {
+          Toast.show({
+            type: "error",
+            text1: "Invalid OTP",
+            text2: "Please try again",
+          });
+        },
+      });
+  }
 
   return (
     <ThemedView style={styles.container}>
@@ -657,7 +750,7 @@ export default function ServiceReportFormScreen() {
           <FormDropdown
             label="Company *"
             placeholder="Select company"
-            options={companyOptions} // { id, name }
+            options={companyOptions}
             selectedValue={companyId}
             onValueChange={(id) => setCompanyId(id)}
           />
@@ -693,6 +786,48 @@ export default function ServiceReportFormScreen() {
 
           <FormInput label="Client Name" placeholder="Enter client name" value={clientName} onChangeText={setClientName} />
           <FormInput label="Client Contact No" placeholder="Enter client contact" value={clientContactNo} onChangeText={setClientContactNo} keyboardType="phone-pad" />
+
+          {/* OTP Section */}
+          {
+            isEditing ? <ThemedText type="body" style={styles.verifiedText}>Contact Number Verified</ThemedText> :
+            <View style={styles.twoColumn}>
+              <View style={styles.inputHalf}>
+                <FormInput label="Enter OTP" placeholder="Enter OTP" value={otp} onChangeText={setOtp} /> 
+              </View>
+              <View style={styles.inputHalf}>
+                {
+                  !showVerify ?
+                  <>
+                    <CustomButton
+                      onPress={handleGenerateOtpClick}
+                      style={[{ backgroundColor: colors.primary, marginTop: Spacing["2xl"] }]}
+                    >
+                    {isPending ? <CustomLoader color="#fff" />: "Generate OTP"}</CustomButton>
+                    <CustomAlert
+                      visible={showAlert}
+                      title="Confirmation"
+                      message={`Are you sure you want to send OTP to ${clientContactNo}?`}
+                      type="info"
+                      confirmText="Confirm"
+                      cancelText="Cancel"
+                      onConfirm={generateOTP}
+                      onCancel={() => setShowAlert(false)}
+                    />
+                  </>
+                :
+                  <View style={styles.twoColumn}>
+                    <View style={styles.inputHalf}>
+                      <CustomButton onPress={veriftOtp} style={[ { backgroundColor: colors.primary, marginTop: Spacing.lg }]}>{isPending ? <CustomLoader color="#fff" />: "Verify"}</CustomButton> 
+                    </View>
+                    <View style={styles.inputHalf}>
+                      <CustomButton onPress={() => {}} style={[ { backgroundColor: colors.primary, marginTop: Spacing.lg }]}>{isPending ? <CustomLoader color="#fff" />: "Resend"}</CustomButton> 
+                    </View>
+                  </View>
+                }             
+              </View>
+          </View>
+          }
+          
         </Card>
 
         {/* Service Details */}
@@ -895,7 +1030,6 @@ export default function ServiceReportFormScreen() {
               <FormInput label="Transmission Oil" placeholder="Enter details" value={partsLubricants.transmissionOil} onChangeText={(v) => updatePartsLubricants("transmissionOil", v)} />
             </View>   
           </View>
-          {/* <FormInput label="Other Parts Supplied" placeholder="Enter other parts and details" value={partsLubricants.otherPartsSupplied} onChangeText={(v) => updatePartsLubricants("otherPartsSupplied", v)} multiline numberOfLines={4} style={{ height: 100, textAlignVertical: "top" }} /> */}
           <ThemedText type="small" style={{ marginBottom: Spacing.sm, fontWeight: "500" }}>
             Other Parts Supplied
           </ThemedText>
@@ -974,11 +1108,13 @@ export default function ServiceReportFormScreen() {
             label="Technician Signature"
             value={technicianSignature}
             onChange={setTechnicianSignature}
+            disabled={isEditing}
           />
           <SignatureBox
             label="Customer Signature"
             value={clientSignature}
             onChange={setClientSignature}
+            disabled={isEditing}
           />
 
           <FormDatePicker label="Completion Date" value={completionDate} onChange={setCompletionDate} />
@@ -1000,8 +1136,13 @@ export default function ServiceReportFormScreen() {
 
         {/* Buttons */}
         <View style={[styles.buttonContainer, { paddingBottom: insets.bottom + 100 }]}>
-          <CustomButton onPress={handleSaveAsDraft} style={[styles.draftButton, { backgroundColor: colors.secondary }]}>Save as Draft</CustomButton>
-          <CustomButton onPress={handleSubmit} style={[styles.submitButton, { backgroundColor: colors.primary }]}>{isEditing ? "Update Report" : "Submit Report"}</CustomButton>
+          <CustomButton onPress={handleSaveAsDraft} style={[styles.draftButton, { backgroundColor: colors.secondary }]}>{isPending ? <CustomLoader color="#fff" />: "Save as Draft"}</CustomButton>
+          <CustomButton onPress={handleSubmit} style={[styles.submitButton, { backgroundColor: colors.primary }]}>{isPending
+            ? <CustomLoader color="#fff" />
+            : isEditing
+              ? "Update Report"
+              : "Submit Report"}
+          </CustomButton>
         </View>
       </KeyboardAwareScrollViewCompat>
     </ThemedView>
@@ -1082,5 +1223,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
   },
-  
+  verifiedText: {
+    color: Colors.light.success,
+    textAlign: "center",
+    fontWeight: "bold"
+  }
 });

@@ -8,7 +8,7 @@ import { useScreenOptions } from "../hooks/useScreenOptions";
 export type MaintenanceStackParamList = {
   GMList: undefined;
   GMDetail: { id: string };
-  GMForm: { id?: string };
+  GMForm: { report?: any };
 };
 
 const Stack = createNativeStackNavigator<MaintenanceStackParamList>();

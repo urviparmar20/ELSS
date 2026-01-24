@@ -1,20 +1,13 @@
-import { ServiceReportMode } from "../types/serviceReport";
-
 const BASE_URL = process.env.EXPO_PUBLIC_BASE_URL
-export const storeServiceReportApi = async ({
+export const storeGMApi = async ({
   token,
   formData,
-  mode,
 }: {
   token: string;
   formData: FormData;
-  mode: ServiceReportMode;
 }) => {
   
-  const endpoint =
-    mode === "draft"
-      ? "/service-report/draft"
-      : "/service-report/store";
+  const endpoint = "/general-maintenance/store";
 
   const response = await fetch(`${BASE_URL}${endpoint}`, {
     method: "POST",
@@ -28,8 +21,6 @@ export const storeServiceReportApi = async ({
   if (!response.ok) {
     const text = await response.text();
     console.log('response',response);
-
-    console.log('text',text);
     
     throw new Error(`HTTP ${response.status}: ${text}`);
   }

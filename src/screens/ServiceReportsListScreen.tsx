@@ -66,7 +66,7 @@ const filteredReports = (data ?? []).filter((report: any) => {
     <Card
       elevation={1}
       style={styles.listItem}
-      onPress={() => navigation.navigate("ServiceReportDetail", { id: item.id })}
+      // onPress={() => navigation.navigate("ServiceReportDetail", { id: item.id })}
     >
       <View style={styles.listItemHeader}>
         <View style={styles.listItemInfo}>
