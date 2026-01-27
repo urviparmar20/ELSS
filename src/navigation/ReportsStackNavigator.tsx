@@ -4,6 +4,7 @@ import ServiceReportsListScreen from "../screens/ServiceReportsListScreen";
 // import ServiceReportDetailScreen from "@/screens/ServiceReportDetailScreen";
 import ServiceReportFormScreen from "../screens/ServiceReportFormScreen";
 import { useScreenOptions } from "../hooks/useScreenOptions";
+import DrawerMenuButton from "../components/DrawerMenuButton";
 
 export type ReportsStackParamList = {
   ServiceReportsList: undefined;
@@ -21,7 +22,9 @@ export default function ReportsStackNavigator() {
       <Stack.Screen
         name="ServiceReportsList"
         component={ServiceReportsListScreen}
-        options={{ headerTitle: "Service Reports" }}
+        options={{ headerTitle: "Service Reports",         
+        headerLeft: () => <DrawerMenuButton />,
+      }}
       />
       {/* <Stack.Screen
         name="ServiceReportDetail"

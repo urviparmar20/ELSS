@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { View, StyleSheet, FlatList, TextInput, Pressable } from "react-native";
-import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
 import { useFocusEffect } from "@react-navigation/native";
 import { useQueryClient } from "@tanstack/react-query";
@@ -11,18 +10,19 @@ import { useTheme } from "../hooks/useTheme";
 import { Colors, Spacing, BorderRadius } from "../constants/theme";
 import { Feather } from "@expo/vector-icons";
 import type { MaintenanceStackParamList } from "../navigation/MaintenanceStackNavigator";
-import { useGeneralMaintenanceList } from "../hooks/useGeneralMaintenanceList";
 import { Card } from "../components/Card";
 import { MaintenanceRecord } from "../types/maintenance";
 import CustomLoader from "../components/CustomLoader";
+import { usePastGMList } from "../hooks/userPastGMList";
 
 
 type MaintenanceNavigationProp = NativeStackNavigationProp<MaintenanceStackParamList>;
 
 const ITEMS_PER_PAGE = 20;
 
-export default function GMListScreen() {
-  const tabBarHeight = useBottomTabBarHeight();
+export default function PastGMListScreen() {
+  // const tabBarHeight = useBottomTabBarHeight();
+  
   const navigation = useNavigation<MaintenanceNavigationProp>();
   const { theme, isDark } = useTheme();
   const colors = Colors.light;
@@ -33,8 +33,7 @@ export default function GMListScreen() {
   const [page, setPage] = useState(1);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
 
-  const { data, isLoading } =
-  useGeneralMaintenanceList();
+  const { data, isLoading } = usePastGMList();  
 
   useEffect(() => {
     if (data?.data?.generalMaintenance) {
@@ -46,16 +45,8 @@ export default function GMListScreen() {
     setPage(1);
   }, [searchQuery, filterStatus, gMList]);
 
-  const getStatusColor = (isPending: "Y" | "N") => {
-    return isPending === "Y" ? colors.warning : colors.success;
-  };
-
   const getStatusLabel = (isPending: "Y" | "N") => {
     return isPending === "Y" ? "pending" : "completed";
-  };
-
-  const getStatusText = (isPending: "Y" | "N") => {
-    return isPending === "Y" ? "Pending" : "Completed";
   };
 
   const filteredReports = (gMList ?? []).filter((report: any) => {
@@ -90,7 +81,6 @@ export default function GMListScreen() {
     };
     
   
-  const paginatedReports = filteredReports;
   
   const queryClient = useQueryClient();
 
@@ -131,19 +121,6 @@ export default function GMListScreen() {
             {item.equipment}
           </ThemedText>
         </View>
-        <View
-          style={[
-            styles.statusBadge,
-            { backgroundColor: getStatusColor(item.is_pending) + "20" },
-          ]}
-        >
-          <ThemedText
-            type="small"
-            style={[styles.statusText, { color: getStatusColor(item.is_pending) }]}
-          >
-            {getStatusText(item.is_pending)}
-          </ThemedText>
-        </View>
       </View>
 
       <View style={styles.listItemDetails}>
@@ -160,17 +137,6 @@ export default function GMListScreen() {
           </ThemedText>
         </View>
       </View>
-
-      <View style={styles.listItemActions}>
-        <Pressable
-          style={[styles.actionButton, { backgroundColor: colors.primary + "20" }]}
-          onPress={() =>
-            navigation.navigate("GMForm", { report: item })
-          }
-        >
-          <Feather name="edit-2" size={16} color={colors.primary} />
-        </Pressable>
-      </View>
     </Card>
   );
 
@@ -184,25 +150,6 @@ export default function GMListScreen() {
         Tap the + button to create your first maintenance record
       </ThemedText>
     </View>
-  );
-
-  const FilterChip = ({ label, value }: { label: string; value: string | null }) => (
-    <Pressable
-      style={[
-        styles.filterChip,
-        {
-          backgroundColor: filterStatus === value ? colors.primary : colors.backgroundSecondary,
-        },
-      ]}
-      onPress={() => setFilterStatus(filterStatus === value ? null : value)}
-    >
-      <ThemedText
-        type="small"
-        style={{ color: filterStatus === value ? "#fff" : theme.text }}
-      >
-        {label}
-      </ThemedText>
-    </Pressable>
   );
 
   return (
@@ -230,36 +177,17 @@ export default function GMListScreen() {
         </View>
       </View>
 
-      <View style={styles.filterContainer}>
-        <FilterChip label="All" value={null} />
-        <FilterChip label="Pending" value="pending" />
-        <FilterChip label="Completed" value="completed" />
-      </View>
-
       <FlatList
         data={visibleReports}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
-        contentContainerStyle={[
-          styles.listContent,
-          { paddingBottom: tabBarHeight + Spacing["5xl"] },
-        ]}
+        contentContainerStyle={styles.listContent}
         ListEmptyComponent={renderEmptyState}
         ListFooterComponent={renderFooter}
         onEndReached={loadMore}
         onEndReachedThreshold={0.5}
         showsVerticalScrollIndicator={false}
       />
-
-      <Pressable
-        style={[
-          styles.fab,
-          { backgroundColor: colors.secondary, bottom: tabBarHeight + Spacing.xl },
-        ]}
-        onPress={() => navigation.navigate("GMForm", {})}
-      >
-        <Feather name="plus" size={24} color="#fff" />
-      </Pressable>
     </ThemedView>
   );
 }
@@ -287,17 +215,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     height: "100%",
   },
-  filterContainer: {
-    flexDirection: "row",
-    paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.md,
-    gap: Spacing.sm,
-  },
-  filterChip: {
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.sm,
-    borderRadius: BorderRadius.full,
-  },
   listContent: {
     paddingHorizontal: Spacing.lg,
   },
@@ -314,15 +231,6 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: Spacing.md,
   },
-  statusBadge: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
-    borderRadius: BorderRadius.full,
-  },
-  statusText: {
-    fontWeight: "600",
-    fontSize: 12,
-  },
   listItemDetails: {
     gap: Spacing.xs,
     marginBottom: Spacing.md,
@@ -330,18 +238,6 @@ const styles = StyleSheet.create({
   detailRow: {
     flexDirection: "row",
     alignItems: "center",
-  },
-  listItemActions: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    gap: Spacing.sm,
-  },
-  actionButton: {
-    width: 36,
-    height: 36,
-    borderRadius: BorderRadius.sm,
-    alignItems: "center",
-    justifyContent: "center",
   },
   emptyState: {
     flex: 1,
@@ -354,18 +250,5 @@ const styles = StyleSheet.create({
     marginTop: Spacing.lg,
     marginBottom: Spacing.sm,
   },
-  fab: {
-    position: "absolute",
-    right: Spacing.lg,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: "center",
-    justifyContent: "center",
-    elevation: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-  }
+
 });

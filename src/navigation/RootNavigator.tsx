@@ -6,6 +6,7 @@ import SplashScreen from '../screens/SplashScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
 import MainTabNavigator from './MainTabNavigator';
 import AuthNavigator from './AuthNavigator';
+import AppDrawerNavigator from './AppDrawerNavigator';
 
 export type RootStackParamList = {
   Splash: undefined;
@@ -32,18 +33,10 @@ export default function RootNavigator() {
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      {/* Show splash only on first app load */}
-      {/* {showSplash && <Stack.Screen name="Splash">
-        {(props) => <SplashScreen {...props} isAuthenticated={isAuthenticated} />}
-      </Stack.Screen>} */}
-
-      {/* After splash or if user logged out, show the main screens */}
       {isAuthenticated ? (
-        <Stack.Screen name="Main" component={MainTabNavigator} />
+        <Stack.Screen name="Main" component={AppDrawerNavigator} />
       ) : (
         <Stack.Screen name="Auth" component={AuthNavigator} />
-
-        // <Stack.Screen name="Login" component={LoginScreen} />
       )}
     </Stack.Navigator>
   );

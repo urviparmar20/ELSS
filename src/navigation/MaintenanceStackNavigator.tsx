@@ -4,6 +4,7 @@ import GMListScreen from "../screens/GMListScreen";
 // import MaintenanceDetailScreen from "../screens/MaintenanceDetailScreen";
 import GMFormScreen from "../screens/GMFormScreen";
 import { useScreenOptions } from "../hooks/useScreenOptions";
+import DrawerMenuButton from "../components/DrawerMenuButton";
 
 export type MaintenanceStackParamList = {
   GMList: undefined;
@@ -21,7 +22,10 @@ export default function MaintenanceStackNavigator() {
       <Stack.Screen
         name="GMList"
         component={GMListScreen}
-        options={{ headerTitle: "Maintenance" }}
+        options={{ headerTitle: "Maintenance",         
+        headerLeft: () => <DrawerMenuButton />,
+      }}
+        
       />
       {/* <Stack.Screen
         name="MaintenanceDetail"

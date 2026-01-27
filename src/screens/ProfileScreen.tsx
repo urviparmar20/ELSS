@@ -24,6 +24,7 @@ import { logout } from "../store/authSlice";
 import type { RootStackParamList } from "../navigation/RootNavigator";
 import { useLogout } from "../hooks/useLogout";
 import type { ProfileStackParamList } from "../navigation/ProfileStackNavigator";
+import { useSafeTabBarHeight } from "../hooks/useSafeTabBarHeight";
 
 type RootNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -31,7 +32,8 @@ type ProfileNavProp =
   NativeStackNavigationProp<ProfileStackParamList>;
   
 export default function ProfileScreen() {
-  const tabBarHeight = useBottomTabBarHeight();
+  const tabBarHeight = useSafeTabBarHeight();
+
   const navigation = useNavigation<RootNavigationProp>(); // RootStack navigation
   const { theme, isDark } = useTheme();
   const colors = Colors.light;
