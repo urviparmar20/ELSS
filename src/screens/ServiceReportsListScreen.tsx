@@ -34,8 +34,6 @@ export default function ServiceReportsListScreen() {
   const [hasMore, setHasMore] = useState(true);
   const { data, isLoading, error } = useServiceReports(currentPage);
  
-console.log('data',data);
-
   const filteredReports = reports.filter((report: any) => {
     const matchesSearch =
       (report.companyName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -107,6 +105,15 @@ console.log('data',data);
         return colors.textSecondary;
     }
   };
+  const isFirstLoading =
+  isLoading && isInitialLoad.current;
+
+  const hasData =
+    !isLoading && reports.length > 0;
+
+  const isEmpty =
+    !isLoading && reports.length === 0;
+
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -245,20 +252,32 @@ console.log('data',data);
         <FilterChip label="Completed" value="completed" />
       </View>
 
-      <FlatList
-        data={filteredReports}
-        renderItem={renderItem}
-        keyExtractor={(item) => item.id}
-        onEndReached={loadMore}
-        onEndReachedThreshold={0.4}
-        ListFooterComponent={renderFooter}
-        ListEmptyComponent={renderEmptyState}
-        contentContainerStyle={[
-          styles.listContent,
-          { paddingBottom: tabBarHeight + Spacing["5xl"] },
-        ]}
-        showsVerticalScrollIndicator={false}
-      />
+      {/* FULL SCREEN LOADER (initial load only) */}
+      {isFirstLoading && (
+        <View style={{ flex: 1, justifyContent: "center" }}>
+          <CustomLoader size="large" color={colors.primary} />
+        </View>
+      )}
+
+      {/* EMPTY STATE (after load, no data) */}
+      {isEmpty && renderEmptyState()}
+
+      {/* LIST */}
+      {hasData && (
+        <FlatList
+          data={filteredReports}
+          renderItem={renderItem}
+          keyExtractor={(item) => item.id}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.4}
+          ListFooterComponent={renderFooter}
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: tabBarHeight + Spacing["5xl"] },
+          ]}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
 
       <Pressable
         style={[

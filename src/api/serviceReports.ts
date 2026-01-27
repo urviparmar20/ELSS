@@ -11,7 +11,6 @@ export const serviceReportsListApi = async ({
   page,
   token,
 }: ServiceReportParams) => {
-  console.log('page',page);
   
   try {
     const response = await api.post(

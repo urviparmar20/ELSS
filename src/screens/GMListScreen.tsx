@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View, StyleSheet, FlatList, TextInput, Pressable } from "react-native";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
@@ -8,20 +8,18 @@ import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { ThemedText } from "../components/ThemedText";
 import { ThemedView } from "../components/ThemedView";
 import { useTheme } from "../hooks/useTheme";
-// import { useData, MaintenanceRecord } from "@/contexts/DataContext";
 import { Colors, Spacing, BorderRadius } from "../constants/theme";
 import { Feather } from "@expo/vector-icons";
 import type { MaintenanceStackParamList } from "../navigation/MaintenanceStackNavigator";
 import { useGeneralMaintenanceList } from "../hooks/useGeneralMaintenanceList";
-import { useSelector } from 'react-redux';
-import { RootState } from '../store';
 import { Card } from "../components/Card";
 import { MaintenanceRecord } from "../types/maintenance";
+import CustomLoader from "../components/CustomLoader";
 
 
 type MaintenanceNavigationProp = NativeStackNavigationProp<MaintenanceStackParamList>;
 
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 20;
 
 export default function GMListScreen() {
   const tabBarHeight = useBottomTabBarHeight();
@@ -31,12 +29,12 @@ export default function GMListScreen() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
   const [gMList, setgMList] = useState<any[]>([]);
-// console.log('gMList',gMList);
+  const [page, setPage] = useState(1);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
 
   const { data, isLoading } =
-  useGeneralMaintenanceList(currentPage);
+  useGeneralMaintenanceList();
 
   useEffect(() => {
     if (data?.data?.generalMaintenance) {
@@ -44,7 +42,9 @@ export default function GMListScreen() {
     }
   }, [data]); 
 
- 
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, filterStatus, gMList]);
 
   const getStatusColor = (isPending: "Y" | "N") => {
     return isPending === "Y" ? colors.warning : colors.success;
@@ -64,11 +64,31 @@ export default function GMListScreen() {
         (report.mc || "").toLowerCase().includes(searchQuery) ||
         (report.equipment_type || "").toLowerCase().includes(searchQuery);
       const matchesFilter = filterStatus
-  ? getStatusLabel(report.is_pending) === filterStatus
-  : true;
+        ? getStatusLabel(report.is_pending) === filterStatus
+        : true;
 
       return matchesSearch && matchesFilter;
     });
+
+    const visibleReports = filteredReports.slice(
+      0,
+      page * ITEMS_PER_PAGE
+    );
+    
+    const loadMore = () => {
+      if (isFetchingMore) return;
+    
+      if (visibleReports.length >= filteredReports.length) return;
+    
+      setIsFetchingMore(true);
+    
+      // simulate async loading (for UX)
+      setTimeout(() => {
+        setPage((prev) => prev + 1);
+        setIsFetchingMore(false);
+      }, 500);
+    };
+    
   
   const paginatedReports = filteredReports;
   
@@ -86,6 +106,16 @@ export default function GMListScreen() {
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
   };
 
+  const renderFooter = () => {
+    if (!isFetchingMore) return null;
+  
+    return (
+      <View style={{ paddingVertical: 20 }}>
+      <CustomLoader size="large" color={colors.primary} />
+    </View>
+    );
+  };
+  
   const renderItem = ({ item }: { item: MaintenanceRecord }) => (
     <Card
       elevation={1}
@@ -207,7 +237,7 @@ export default function GMListScreen() {
       </View>
 
       <FlatList
-        data={paginatedReports}
+        data={visibleReports}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
         contentContainerStyle={[
@@ -215,6 +245,9 @@ export default function GMListScreen() {
           { paddingBottom: tabBarHeight + Spacing["5xl"] },
         ]}
         ListEmptyComponent={renderEmptyState}
+        ListFooterComponent={renderFooter}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.5}
         showsVerticalScrollIndicator={false}
       />
 
