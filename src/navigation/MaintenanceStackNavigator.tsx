@@ -1,14 +1,15 @@
 import React from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import MaintenanceListScreen from "../screens/MaintenanceListScreen";
+import GMListScreen from "../screens/GMListScreen";
 // import MaintenanceDetailScreen from "../screens/MaintenanceDetailScreen";
-import MaintenanceFormScreen from "../screens/MaintenanceFormScreen";
+import GMFormScreen from "../screens/GMFormScreen";
 import { useScreenOptions } from "../hooks/useScreenOptions";
+import DrawerMenuButton from "../components/DrawerMenuButton";
 
 export type MaintenanceStackParamList = {
-  MaintenanceList: undefined;
-  MaintenanceDetail: { id: string };
-  MaintenanceForm: { id?: string };
+  GMList: undefined;
+  GMDetail: { id: string };
+  GMForm: { report?: any };
 };
 
 const Stack = createNativeStackNavigator<MaintenanceStackParamList>();
@@ -19,9 +20,12 @@ export default function MaintenanceStackNavigator() {
   return (
     <Stack.Navigator screenOptions={screenOptions}>
       <Stack.Screen
-        name="MaintenanceList"
-        component={MaintenanceListScreen}
-        options={{ headerTitle: "Maintenance" }}
+        name="GMList"
+        component={GMListScreen}
+        options={{ headerTitle: "Maintenance",         
+        headerLeft: () => <DrawerMenuButton />,
+      }}
+        
       />
       {/* <Stack.Screen
         name="MaintenanceDetail"
@@ -29,8 +33,8 @@ export default function MaintenanceStackNavigator() {
         options={{ headerTitle: "Maintenance Detail" }}
       /> */}
       <Stack.Screen
-        name="MaintenanceForm"
-        component={MaintenanceFormScreen}
+        name="GMForm"
+        component={GMFormScreen}
         options={{
           presentation: "modal",
           headerTitle: "New Maintenance",

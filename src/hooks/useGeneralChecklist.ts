@@ -14,5 +14,8 @@ export const useGeneralChecklist = (equipmentTypeId?: string) => {
         token: token as string,
       }),
     enabled: !!token && !!equipmentTypeId,
+    retry: false,        // ✅ IMPORTANT
+    staleTime: 0,
   });
+  
 };

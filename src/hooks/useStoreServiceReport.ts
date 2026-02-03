@@ -1,17 +1,18 @@
 import { useMutation } from "@tanstack/react-query";
-import { useSelector } from "react-redux";
-import { RootState } from "../store";
-import { storeServiceReportApi, ServiceReportStoreParams } from "../api/storeServiceReport";
+import { storeServiceReportApi } from "../api/storeServiceReport";
+import { ServiceReportMode } from "../types/serviceReport";
 
-export const useStoreServiceReport = () => {
-  const token = useSelector((state: RootState) => state.auth.token);
-
-  const mutation = useMutation({
-    mutationFn: (params: Omit<ServiceReportStoreParams, "token">) => {
-      if (!token) throw new Error("No token found");
-      return storeServiceReportApi({ ...params, token });
+export const useStoreServiceReport = (token: string) => {
+  return useMutation({
+    mutationFn: ({
+      formData,
+      mode,
+    }: {
+      formData: FormData;
+      mode: ServiceReportMode;
+    }) => {
+      if (!token) throw new Error("No token");
+      return storeServiceReportApi({ token, formData, mode });
     },
   });
-
-  return mutation;
 };

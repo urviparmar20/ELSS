@@ -1,129 +1,178 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View, StyleSheet, FlatList, TextInput, Pressable } from "react-native";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
 import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect } from "@react-navigation/native";
+import { useQueryClient } from "@tanstack/react-query";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { ThemedText } from "../components/ThemedText";
 import { ThemedView } from "../components/ThemedView";
-// import { Card } from "@/components/Card";
 import { useTheme } from "../hooks/useTheme";
-// import { useData, MaintenanceRecord } from "@/contexts/DataContext";
 import { Colors, Spacing, BorderRadius } from "../constants/theme";
 import { Feather } from "@expo/vector-icons";
 import type { MaintenanceStackParamList } from "../navigation/MaintenanceStackNavigator";
 import { useGeneralMaintenanceList } from "../hooks/useGeneralMaintenanceList";
-import { useSelector } from 'react-redux';
-import { RootState } from '../store';
+import { Card } from "../components/Card";
+import { MaintenanceRecord } from "../types/maintenance";
+import CustomLoader from "../components/CustomLoader";
 
 
 type MaintenanceNavigationProp = NativeStackNavigationProp<MaintenanceStackParamList>;
 
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 20;
 
-export default function MaintenanceListScreen() {
+export default function GMListScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const navigation = useNavigation<MaintenanceNavigationProp>();
   const { theme, isDark } = useTheme();
-  // const { maintenanceRecords } = useData();
   const colors = Colors.light;
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  
-  const { data, isLoading, error, refetch, isFetching } =
-  useGeneralMaintenanceList(currentPage);
+  const [gMList, setgMList] = useState<any[]>([]);
+  const [page, setPage] = useState(1);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
 
-  
+  const { data, isLoading } =
+  useGeneralMaintenanceList();
 
-  // const filteredRecords = maintenanceRecords.filter((record) => {
-  //   const matchesSearch =
-  //     record.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-  //     record.mcSerialNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-  //     record.equipmentTypeName.toLowerCase().includes(searchQuery.toLowerCase());
-  //   const matchesFilter = filterStatus ? record.status === filterStatus : true;
-  //   return matchesSearch && matchesFilter;
-  // });
-
-  // const totalPages = Math.ceil(filteredRecords.length / ITEMS_PER_PAGE);
-  // const paginatedRecords = filteredRecords.slice(
-  //   (currentPage - 1) * ITEMS_PER_PAGE,
-  //   currentPage * ITEMS_PER_PAGE
-  // );
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "completed":
-        return colors.success;
-      case "pending":
-        return colors.warning;
-      case "overdue":
-        return colors.error;
-      default:
-        return colors.textSecondary;
+  useEffect(() => {
+    if (data?.data?.generalMaintenance) {
+      setgMList(data.data?.generalMaintenance);
     }
+  }, [data]); 
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, filterStatus, gMList]);
+
+  const getStatusColor = (isPending: "Y" | "N") => {
+    return isPending === "Y" ? colors.warning : colors.success;
   };
 
+  const getStatusLabel = (isPending: "Y" | "N") => {
+    return isPending === "Y" ? "pending" : "completed";
+  };
+
+  const getStatusText = (isPending: "Y" | "N") => {
+    return isPending === "Y" ? "Pending" : "Completed";
+  };
+
+  const filteredReports = (gMList ?? []).filter((report: any) => {
+    const matchesSearch =
+        (report.company_name || "").toLowerCase().includes(searchQuery) ||
+        (report.mc || "").toLowerCase().includes(searchQuery) ||
+        (report.equipment_type || "").toLowerCase().includes(searchQuery);
+      const matchesFilter = filterStatus
+        ? getStatusLabel(report.is_pending) === filterStatus
+        : true;
+
+      return matchesSearch && matchesFilter;
+    });
+
+    const visibleReports = filteredReports.slice(
+      0,
+      page * ITEMS_PER_PAGE
+    );
+    
+    const loadMore = () => {
+      if (isFetchingMore) return;
+    
+      if (visibleReports.length >= filteredReports.length) return;
+    
+      setIsFetchingMore(true);
+    
+      // simulate async loading (for UX)
+      setTimeout(() => {
+        setPage((prev) => prev + 1);
+        setIsFetchingMore(false);
+      }, 500);
+    };
+    
+  
+  const paginatedReports = filteredReports;
+  
+  const queryClient = useQueryClient();
+
+  useFocusEffect(
+    React.useCallback(() => {
+      queryClient.invalidateQueries({
+        queryKey: ["general-maintenance"],
+      });
+    }, [])
+  );
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
   };
 
-  // const renderItem = ({ item }: { item: MaintenanceRecord }) => (
-  //   <Card
-  //     elevation={1}
-  //     style={styles.listItem}
-  //     onPress={() => navigation.navigate("MaintenanceDetail", { id: item.id })}
-  //   >
-  //     <View style={styles.listItemHeader}>
-  //       <View style={styles.listItemInfo}>
-  //         <ThemedText type="h4" numberOfLines={1}>
-  //           {item.companyName}
-  //         </ThemedText>
-  //         <ThemedText type="small" style={{ color: colors.textSecondary }}>
-  //           {item.mcSerialNo}
-  //         </ThemedText>
-  //       </View>
-  //       <View
-  //         style={[
-  //           styles.statusBadge,
-  //           { backgroundColor: getStatusColor(item.status) + "20" },
-  //         ]}
-  //       >
-  //         <ThemedText
-  //           type="small"
-  //           style={[styles.statusText, { color: getStatusColor(item.status) }]}
-  //         >
-  //           {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
-  //         </ThemedText>
-  //       </View>
-  //     </View>
+  const renderFooter = () => {
+    if (!isFetchingMore) return null;
+  
+    return (
+      <View style={{ paddingVertical: 20 }}>
+      <CustomLoader size="large" color={colors.primary} />
+    </View>
+    );
+  };
+  
+  const renderItem = ({ item }: { item: MaintenanceRecord }) => (
+    <Card
+      elevation={1}
+      style={styles.listItem}
+      // onPress={() => navigation.navigate("ServiceReportDetail", { id: item.id })}
+    >
+      <View style={styles.listItemHeader}>
+        <View style={styles.listItemInfo}>
+          <ThemedText type="h4" numberOfLines={1}>
+            {item.company_name}
+          </ThemedText>
+          <ThemedText type="small" style={{ color: colors.textSecondary }}>
+            {item.equipment}
+          </ThemedText>
+        </View>
+        <View
+          style={[
+            styles.statusBadge,
+            { backgroundColor: getStatusColor(item.is_pending) + "20" },
+          ]}
+        >
+          <ThemedText
+            type="small"
+            style={[styles.statusText, { color: getStatusColor(item.is_pending) }]}
+          >
+            {getStatusText(item.is_pending)}
+          </ThemedText>
+        </View>
+      </View>
 
-  //     <View style={styles.listItemDetails}>
-  //       <View style={styles.detailRow}>
-  //         <Feather name="tool" size={14} color={colors.textSecondary} />
-  //         <ThemedText type="small" style={{ color: colors.textSecondary, marginLeft: 6 }}>
-  //           {item.equipmentTypeName}
-  //         </ThemedText>
-  //       </View>
-  //       <View style={styles.detailRow}>
-  //         <Feather name="calendar" size={14} color={colors.textSecondary} />
-  //         <ThemedText type="small" style={{ color: colors.textSecondary, marginLeft: 6 }}>
-  //           {formatDate(item.createdAt)}
-  //         </ThemedText>
-  //       </View>
-  //     </View>
+      <View style={styles.listItemDetails}>
+        <View style={styles.detailRow}>
+          <Feather name="tool" size={14} color={colors.textSecondary} />
+          <ThemedText type="small" style={{ color: colors.textSecondary, marginLeft: 6 }}>
+            {item.equipment_type}
+          </ThemedText>
+        </View>
+        <View style={styles.detailRow}>
+          <Feather name="calendar" size={14} color={colors.textSecondary} />
+          <ThemedText type="small" style={{ color: colors.textSecondary, marginLeft: 6 }}>
+            {formatDate(item.current_date)}
+          </ThemedText>
+        </View>
+      </View>
 
-  //     <View style={styles.listItemActions}>
-  //       <Pressable
-  //         style={[styles.actionButton, { backgroundColor: colors.primary + "20" }]}
-  //         onPress={() => navigation.navigate("MaintenanceForm", { id: item.id })}
-  //       >
-  //         <Feather name="edit-2" size={16} color={colors.primary} />
-  //       </Pressable>
-  //     </View>
-  //   </Card>
-  // );
+      <View style={styles.listItemActions}>
+        <Pressable
+          style={[styles.actionButton, { backgroundColor: colors.primary + "20" }]}
+          onPress={() =>
+            navigation.navigate("GMForm", { report: item })
+          }
+        >
+          <Feather name="edit-2" size={16} color={colors.primary} />
+        </Pressable>
+      </View>
+    </Card>
+  );
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
@@ -168,7 +217,7 @@ export default function MaintenanceListScreen() {
           <Feather name="search" size={20} color={colors.textSecondary} />
           <TextInput
             style={[styles.searchTextInput, { color: theme.text }]}
-            placeholder="Search maintenance..."
+            placeholder="Search GM..."
             placeholderTextColor={colors.textSecondary}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -187,8 +236,8 @@ export default function MaintenanceListScreen() {
         <FilterChip label="Completed" value="completed" />
       </View>
 
-      {/* <FlatList
-        data={paginatedRecords}
+      <FlatList
+        data={visibleReports}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
         contentContainerStyle={[
@@ -196,36 +245,18 @@ export default function MaintenanceListScreen() {
           { paddingBottom: tabBarHeight + Spacing["5xl"] },
         ]}
         ListEmptyComponent={renderEmptyState}
-        ListFooterComponent={totalPages > 1 ? (
-          <View style={styles.pagination}>
-            <Pressable
-              style={[styles.pageButton, { backgroundColor: currentPage === 1 ? colors.backgroundSecondary : colors.primary }]}
-              onPress={() => setCurrentPage(Math.max(1, currentPage - 1))}
-              disabled={currentPage === 1}
-            >
-              <Feather name="chevron-left" size={20} color={currentPage === 1 ? colors.textSecondary : "#fff"} />
-            </Pressable>
-            <ThemedText type="body" style={styles.pageInfo}>
-              Page {currentPage} of {totalPages}
-            </ThemedText>
-            <Pressable
-              style={[styles.pageButton, { backgroundColor: currentPage === totalPages ? colors.backgroundSecondary : colors.primary }]}
-              onPress={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-              disabled={currentPage === totalPages}
-            >
-              <Feather name="chevron-right" size={20} color={currentPage === totalPages ? colors.textSecondary : "#fff"} />
-            </Pressable>
-          </View>
-        ) : null}
+        ListFooterComponent={renderFooter}
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.5}
         showsVerticalScrollIndicator={false}
-      /> */}
+      />
 
       <Pressable
         style={[
           styles.fab,
           { backgroundColor: colors.secondary, bottom: tabBarHeight + Spacing.xl },
         ]}
-        onPress={() => navigation.navigate("MaintenanceForm", {})}
+        onPress={() => navigation.navigate("GMForm", {})}
       >
         <Feather name="plus" size={24} color="#fff" />
       </Pressable>
@@ -293,8 +324,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   listItemDetails: {
-    flexDirection: "row",
-    gap: Spacing.lg,
+    gap: Spacing.xs,
     marginBottom: Spacing.md,
   },
   detailRow: {
@@ -337,23 +367,5 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
-  },
-  pagination: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: Spacing.lg,
-    gap: Spacing.md,
-  },
-  pageButton: {
-    width: 40,
-    height: 40,
-    borderRadius: BorderRadius.sm,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  pageInfo: {
-    minWidth: 100,
-    textAlign: "center",
-  },
+  }
 });

@@ -17,6 +17,9 @@ import { Images } from '../../../assets/images';
 import { useLogin } from '../../hooks/useLogin';
 import { useDispatch } from 'react-redux';
 import { loginSuccess } from '../../store/authSlice';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { AuthStackParamList } from '../../navigation/AuthNavigator';
 
 const LoginScreen = () => {
   const insets = useSafeAreaInsets();
@@ -26,6 +29,9 @@ const LoginScreen = () => {
 
   const dispatch = useDispatch();
 
+  type NavProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
+  const navigation = useNavigation<NavProp>()
+  
   const [showPassword, setShowPassword] = useState(false);
 
   const {
@@ -166,7 +172,10 @@ const LoginScreen = () => {
           </View>
 
           {/* Forgot */}
-          <Pressable style={styles.forgotPassword}>
+          <Pressable
+            style={styles.forgotPassword}
+            onPress={() => navigation.navigate("ForgotPassword")}
+          >
             <ThemedText type="link" style={{ color: colors.primary }}>
               Forgot Password?
             </ThemedText>

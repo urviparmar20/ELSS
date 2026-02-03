@@ -23,17 +23,24 @@ import { RootState, AppDispatch, persistor } from "../store";
 import { logout } from "../store/authSlice";
 import type { RootStackParamList } from "../navigation/RootNavigator";
 import { useLogout } from "../hooks/useLogout";
+import type { ProfileStackParamList } from "../navigation/ProfileStackNavigator";
+import { useSafeTabBarHeight } from "../hooks/useSafeTabBarHeight";
 
 type RootNavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
+type ProfileNavProp =
+  NativeStackNavigationProp<ProfileStackParamList>;
+  
 export default function ProfileScreen() {
-  const tabBarHeight = useBottomTabBarHeight();
+  const tabBarHeight = useSafeTabBarHeight();
+
   const navigation = useNavigation<RootNavigationProp>(); // RootStack navigation
   const { theme, isDark } = useTheme();
   const colors = Colors.light;
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const dispatch = useDispatch<AppDispatch>();
   const { mutate: logoutRequest, isPending: logoutLoading } = useLogout();
+  const profileNavigation = useNavigation<ProfileNavProp>();
 
   const user = useSelector((state: RootState) => state.auth.user);
 
@@ -166,10 +173,16 @@ export default function ProfileScreen() {
             <Feather name="chevron-right" size={20} color={colors.textSecondary} />
           </Card>
 
+          {/* <Card
+            elevation={1}
+            style={styles.menuItem}
+            onPress={() => navigation.navigate("ChangePassword")}
+          > */}
+
           <Card
             elevation={1}
             style={styles.menuItem}
-            // onPress={() => navigation.navigate("ChangePassword")}
+            onPress={() => profileNavigation.navigate("ChangePassword")}
           >
             <View style={styles.menuItemContent}>
               <View
@@ -196,7 +209,7 @@ export default function ProfileScreen() {
         {/* Footer */}
         <View style={styles.footer}>
           <ThemedText type="small" style={{ color: colors.textSecondary }}>
-            ELSS v1.0.0
+            ELSS v{process.env.EXPO_PUBLIC_APP_VERSION}
           </ThemedText>
         </View>
       </ScrollView>

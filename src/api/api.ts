@@ -2,7 +2,8 @@ import axios from "axios";
 
 const api = axios.create({
   baseURL: "https://alpineelss.seatrium.com/api/v1",
-  timeout: 15000,
+  // baseURL: "http://elss.devwebproject.com/api/v1",
+  timeout: 60000,
 });
 
 // api.interceptors.request.use((req) => {

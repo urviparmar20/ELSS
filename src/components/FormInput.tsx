@@ -6,7 +6,7 @@ import { Colors, Spacing, BorderRadius } from "../constants/theme";
 import { Feather } from "@expo/vector-icons";
 
 interface FormInputProps extends TextInputProps {
-  label: string;
+  label?: string;
   error?: string;
   icon?: keyof typeof Feather.glyphMap;
   rightIcon?: keyof typeof Feather.glyphMap;
@@ -32,9 +32,12 @@ export function FormInput({
 
   return (
     <View style={styles.container}>
-      <ThemedText type="small" style={styles.label}>
-        {label}
-      </ThemedText>
+      {
+        label &&
+          <ThemedText type="small" style={styles.label}>
+            {label}
+          </ThemedText>
+       }
       <View
         style={[
           styles.inputContainer,

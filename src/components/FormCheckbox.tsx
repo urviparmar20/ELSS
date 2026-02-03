@@ -28,7 +28,7 @@ export function FormCheckbox({ label, checked, onChange }: FormCheckboxProps) {
       >
         {checked ? <Feather name="check" size={16} color="#fff" /> : null}
       </View>
-      <ThemedText type="body" style={styles.label}>
+      <ThemedText type="small" style={styles.label}>
         {label}
       </ThemedText>
     </Pressable>

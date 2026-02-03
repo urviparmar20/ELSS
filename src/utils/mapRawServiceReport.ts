@@ -1,24 +1,25 @@
-// /src/utils/mapRawServiceReport.ts
-
 export function mapRawServiceReport(raw: any) {
   if (!raw) return null;
 
   return {
     // ---------- BASIC INFO ----------
-    companyId: "", // map later if needed
+    companyId: null, // map later if needed
     companyName: raw.company_name || "",
     address: raw.company_address || "",
     contactPerson: "",
     contactNo: "",
     equipmentTypeName: raw.equipment_type || "",
+    equipmentName: raw.equipment || "",
     mcSerialNo: raw.serial_no || "",
     hourMeter: raw.hr_meter || "",
     jobNo: raw.job_no || "",
-    equipmentTypeId: "",
-    equipmentId: raw.equipment_id || "",
+    equipmentTypeId: null,
+    equipmentId: String(raw.equipment_id ?? ""),
     serviceDepartment: "",
     clientName: raw.client_name || "",
     clientContactNo: raw.client_tel_no || "",
+    signature_client: raw.signature_client || "",
+    signature_technician: raw.signature_technician || "",
 
     serviceTechnicianName: raw.technician || "",
 
@@ -26,13 +27,9 @@ export function mapRawServiceReport(raw: any) {
     serviceTimes: extractServiceTimes(raw),
 
     // ---------- SERVICE STATUS ----------
-    weeklyChecking: parseBool(raw.description_status_list?.checking),
-    monthlyServicing: parseBool(raw.description_status_list?.servicing),
-    halfYearlyServicing: false, // backend does not provide this
-    yearlyServicing: false,
-
-    washing: raw.washing === "Y",
-    cleaning: raw.cleaning === "Y",
+    checking: parseBool(raw.description_status_list?.checking),
+    servicing: parseBool(raw.description_status_list?.servicing),
+    repair: parseBool(raw.description_status_list?.repair),
 
     remarks: raw.description || "",
 
@@ -45,34 +42,39 @@ export function mapRawServiceReport(raw: any) {
 
     // ---------- PARTS / LUBRICANTS ----------
     partsLubricants: {
-      engineAirFilter: raw.servicing_parts_lubricants_list?.engine_air_filter_pri || "",
-      compressorAirFilter: raw.servicing_parts_lubricants_list?.compressor_air_filter_pri || "",
-      oilFilter: raw.servicing_parts_lubricants_list?.oil_filter_pri || "",
-      compressorOilFilter: raw.servicing_parts_lubricants_list?.compressor_oil_filter || "",
-      racorFilter: raw.servicing_parts_lubricants_list?.racor_filter || "",
-      waterFilter: raw.servicing_parts_lubricants_list?.water_filter || "",
-      compressorOil: raw.servicing_parts_lubricants_list?.compressor_oil || "",
-      engineOil: raw.servicing_parts_lubricants_list?.engine_oil || "",
-      fuelFilter: raw.servicing_parts_lubricants_list?.fuel_filter || "",
+      engineAirFilterPri: raw.servicing_parts_lubricants_list?.engineAirFilterPri || "",
+      engineAirFilterSec: raw.servicing_parts_lubricants_list?.engineAirFilterSec || "",
+      compressorAirFilterPri: raw.servicing_parts_lubricants_list?.compressorAirFilterPri || "",
+      compressorAirFilterSec: raw.servicing_parts_lubricants_list?.compressorAirFilterSec || "",
+      oilFilterPri: raw.servicing_parts_lubricants_list?.oilFilterPri || "",
+      oilFilterSec: raw.servicing_parts_lubricants_list?.oilFilterSec || "",
+      compressorOilFilterPri: raw.servicing_parts_lubricants_list?.compressorOilFilterPri || "",
+      fuelFilter: raw.servicing_parts_lubricants_list?.fuelFilter || "",
+      racorFilter: raw.servicing_parts_lubricants_list?.racorFilter || "",
+      hydraulicFilter: raw.servicing_parts_lubricants_list?.hydraulicFilter || "",
+      waterFilter: raw.servicing_parts_lubricants_list?.waterFilter || "",
+      engineOil: raw.servicing_parts_lubricants_list?.engineOil || "",
+      compressorOil: raw.servicing_parts_lubricants_list?.compressorOil || "",
+      hydraulicOil: raw.servicing_parts_lubricants_list?.hydraulicOil || "",
+      transmissionOil: raw.servicing_parts_lubricants_list?.transmissionOil || "",
+
       otherPartsSupplied: (raw.other_parts_supplied_list || []).join(", "),
     },
 
+    images: (raw.images || []).map((url: string, index: number) => ({
+      uri: url,
+      name: `existing_${index}.jpg`,
+      type: "image/jpeg",
+      isExisting: true,   // mark as existing
+    })),
+
     // ---------- CHARGEABLE / DATE ----------
     isChargeable: raw.is_chargable === "Y",
-    completionDate: convertDMYtoDate(raw.filled_date),
+    completionDate: raw.filled_date
+      ? new Date(raw.filled_date)
+      : new Date(),
   };
 }
-
-/* ---------------------------------------------------
-   Helper: Convert DD-MM-YYYY → YYYY-MM-DD 
---------------------------------------------------- */
-function convertDMYtoDate(dmy?: string): Date {
-  if (!dmy) return new Date();
-  const [d, m, y] = dmy.split("-");
-  const fullYear = y.length === 2 ? "20" + y : y;
-  return new Date(Number(fullYear), Number(m) - 1, Number(d));
-}
-
 
 /* ---------------------------------------------------
    Helper: Convert backend booleans
@@ -92,17 +94,16 @@ function extractServiceTimes(raw: any) {
 
   for (let i = 1; i <= 4; i++) {
     const date = dates[`date${i}`];
-    const start = times[`start_time${i}`];
-    const end = times[`end_time${i}`];
 
-    if (date || start || end) {
+    if (date) {
       list.push({
-        date: date ? convertDMYtoDate(date) : new Date().toISOString().split("T")[0],
-        startTime: start || "09:00",
-        endTime: end || "17:00",
+        date, // ✅ KEEP STRING "YYYY-MM-DD"
+        startTime: times[`start_time${i}`] || "09:00",
+        endTime: times[`end_time${i}`] || "17:00",
       });
     }
   }
 
-  return list.length > 0 ? list : [];
+  return list;
 }
+

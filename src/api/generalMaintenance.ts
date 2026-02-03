@@ -2,19 +2,17 @@ import api from './api';
 
 interface GeneralMaintenanceParams {
   userId: number;
-  page: number;
   token: string;  
 }
 
 export const generalMaintenanceListApi = async ({
   userId,
-  page,
   token,
 }: GeneralMaintenanceParams) => {
   try {
     const response = await api.post(
       '/general-maintenances',
-      { user_id: userId, page },
+      { user_id: userId },
       {
         headers: {
           Accept: 'application/json',

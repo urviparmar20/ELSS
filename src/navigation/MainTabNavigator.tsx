@@ -9,6 +9,7 @@ import ReportsStackNavigator from "../navigation/ReportsStackNavigator";
 import ProfileStackNavigator from "../navigation/ProfileStackNavigator";
 import { useTheme } from "../hooks/useTheme";
 import { Colors } from "../constants/theme";
+import { CommonActions } from "@react-navigation/native";
 
 export type MainTabParamList = {
   MaintenanceTab: undefined;
@@ -66,6 +67,25 @@ export default function MainTabNavigator() {
             <Feather name="tool" size={size} color={color} />
           ),
         }}
+        listeners={({ navigation }) => ({
+          tabPress: e => {
+            e.preventDefault();
+      
+            navigation.dispatch(
+              CommonActions.reset({
+                index: 0,
+                routes: [
+                  {
+                    name: "MaintenanceTab",
+                    state: {
+                      routes: [{ name: "GMList" }],
+                    },
+                  },
+                ],
+              })
+            );
+          },
+        })}
       />
       <Tab.Screen
         name="ReportsTab"
@@ -76,6 +96,25 @@ export default function MainTabNavigator() {
             <Feather name="file-text" size={size} color={color} />
           ),
         }}
+        listeners={({ navigation }) => ({
+          tabPress: e => {
+            e.preventDefault();
+      
+            navigation.dispatch(
+              CommonActions.reset({
+                index: 0,
+                routes: [
+                  {
+                    name: "ReportsTab",
+                    state: {
+                      routes: [{ name: "ServiceReportsList" }],
+                    },
+                  },
+                ],
+              })
+            );
+          },
+        })}
       />
       <Tab.Screen
         name="ProfileTab"

@@ -1,49 +1,98 @@
-import React, { useState } from "react";
-import { View, StyleSheet, FlatList, TextInput, Pressable } from "react-native";
+import React, { useCallback, useEffect, useState } from "react";
+import { View, StyleSheet, FlatList, TextInput, Pressable, ActivityIndicator } from "react-native";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { ThemedText } from "../components/ThemedText";
 import { ThemedView } from "../components/ThemedView";
 import { Card } from "../components/Card";
 import { useTheme } from "../hooks/useTheme";
-import { useData, ServiceReport } from "../contexts/DataContext";
+import { ServiceReportRecord }  from "../types/serviceReport"
 import { Colors, Spacing, BorderRadius } from "../constants/theme";
 import { Feather } from "@expo/vector-icons";
 import type { ReportsStackParamList } from "../navigation/ReportsStackNavigator";
 import { useServiceReports } from "../hooks/useServiceReports";
+import CustomLoader from "../components/CustomLoader";
 
 type ReportsNavigationProp = NativeStackNavigationProp<ReportsStackParamList>;
 
-const ITEMS_PER_PAGE = 10;
 
 export default function ServiceReportsListScreen() {
   const tabBarHeight = useBottomTabBarHeight();
   const navigation = useNavigation<ReportsNavigationProp>();
   const { theme, isDark } = useTheme();
   const colors = Colors.light;
+  const isInitialLoad = React.useRef(true);
+  const hasMounted = React.useRef(false);
 
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
+  const [reports, setReports] = useState<ServiceReportRecord[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
-  
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const { data, isLoading, error } = useServiceReports(currentPage);
-
-
-const filteredReports = (data ?? []).filter((report: any) => {
-  const matchesSearch =
-      (report.companyName || "").toLowerCase().includes(searchQuery) ||
-      (report.mcSerialNo || "").toLowerCase().includes(searchQuery) ||
-      (report.equipmentTypeName || "").toLowerCase().includes(searchQuery);
+ 
+  const filteredReports = reports.filter((report: any) => {
+    const matchesSearch =
+      (report.companyName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (report.mcSerialNo || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (report.equipmentTypeName || "").toLowerCase().includes(searchQuery.toLowerCase());
+  
     const matchesFilter = filterStatus ? report.status === filterStatus : true;
     return matchesSearch && matchesFilter;
   });
-
-  const paginatedReports = filteredReports; // no pagination
-
-
-
+  
+  useEffect(() => {
+    if (!data) return;
+  
+    setReports(prev =>
+      currentPage === 1 ? data : [...prev, ...data]
+    );
+  
+    if (data.length === 0) {
+      setHasMore(false);
+    }
+  
+    setIsFetchingMore(false);
+    isInitialLoad.current = false;
+  }, [data, currentPage]);
+  
+  useEffect(() => {
+    setCurrentPage(1);
+    setHasMore(true);
+  }, [searchQuery, filterStatus]);
+  
+  useFocusEffect(
+    useCallback(() => {
+      if (hasMounted.current) {
+        isInitialLoad.current = true;
+        setCurrentPage(1);
+        setHasMore(true);
+      } else {
+        hasMounted.current = true;
+      }
+    }, [])
+  );
+  
+  
+  const loadMore = () => {
+    if (
+      isInitialLoad.current ||
+      isFetchingMore ||
+      isLoading ||
+      !hasMore ||
+      !data  
+    ) {
+      return;
+    }
+  
+    setIsFetchingMore(true);
+    setCurrentPage(prev => prev + 1);
+  };
+  
+  
   const getStatusColor = (status: string) => {
     switch (status) {
       case "completed":
@@ -56,17 +105,36 @@ const filteredReports = (data ?? []).filter((report: any) => {
         return colors.textSecondary;
     }
   };
+  const isFirstLoading =
+  isLoading && reports.length === 0;
+
+  const hasData =
+    !isLoading && reports.length > 0;
+
+  const isEmpty =
+    !isLoading && reports.length === 0;
+
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
   };
+  const renderFooter = () => {
+    if (!isFetchingMore || !hasMore || error) return null;
+  
+    return (
+      <View style={{ paddingVertical: 20 }}>
+        <CustomLoader size="large" color={colors.primary} />
+      </View>
+    );
+  };
+  
 
-  const renderItem = ({ item }: { item: ServiceReport }) => (
+  const renderItem = ({ item }: { item: ServiceReportRecord }) => (
     <Card
       elevation={1}
       style={styles.listItem}
-      onPress={() => navigation.navigate("ServiceReportDetail", { id: item.id })}
+      // onPress={() => navigation.navigate("ServiceReportDetail", { id: item.id })}
     >
       <View style={styles.listItemHeader}>
         <View style={styles.listItemInfo}>
@@ -184,17 +252,32 @@ const filteredReports = (data ?? []).filter((report: any) => {
         <FilterChip label="Completed" value="completed" />
       </View>
 
-      <FlatList
-        data={paginatedReports}
-        renderItem={renderItem}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={[
-          styles.listContent,
-          { paddingBottom: tabBarHeight + Spacing["5xl"] },
-        ]}
-        ListEmptyComponent={renderEmptyState}
-        showsVerticalScrollIndicator={false}
-      />
+      {/* FULL SCREEN LOADER (initial load only) */}
+      {isFirstLoading && (
+        <View style={{ flex: 1, justifyContent: "center" }}>
+          <CustomLoader size="large" color={colors.primary} />
+        </View>
+      )}
+
+      {/* EMPTY STATE (after load, no data) */}
+      {isEmpty && renderEmptyState()}
+
+      {/* LIST */}
+      {hasData && (
+        <FlatList
+          data={filteredReports}
+          renderItem={renderItem}
+          keyExtractor={(item) => item.id}
+          onEndReached={loadMore}
+          onEndReachedThreshold={0.4}
+          ListFooterComponent={renderFooter}
+          contentContainerStyle={[
+            styles.listContent,
+            { paddingBottom: tabBarHeight + Spacing["5xl"] },
+          ]}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
 
       <Pressable
         style={[
