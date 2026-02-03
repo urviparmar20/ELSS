@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, StyleSheet, Alert, Pressable } from "react-native";
+import { View, StyleSheet, Pressable, Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -33,6 +33,8 @@ import { useStoreGM } from "../hooks/useStoreGM";
 import { buildGMFormData } from "../utils/buildGMFormData";
 import { validateForm } from "../utils/validateGM";
 import { mapRawGM } from "../utils/mapRawGM";
+import DateTimePicker from "@react-native-community/datetimepicker";
+
 
 type MaintenanceFormRouteProp = RouteProp<MaintenanceStackParamList, "GMForm">;
 type MaintenanceNavigationProp = NativeStackNavigationProp<MaintenanceStackParamList>;
@@ -68,13 +70,11 @@ export default function MaintenanceFormScreen() {
   const userId = useSelector((state: RootState) => state.auth.user?.user_id);
   
   const existingReport = route.params?.report || null;
-  // console.log('existingReport',route.params?.report);
 
   const formData = React.useMemo(
     () => (existingReport ? mapRawGM(existingReport) : null),
     [existingReport]
   );
-  console.log('formData',formData);
 
   const isEditing = !!existingReport;
 
@@ -124,6 +124,10 @@ export default function MaintenanceFormScreen() {
   const [otp, setOtp] = useState("");
   const [showAlert, setShowAlert] = useState(false);
   const [showVerify, setShowVerify] = useState(false);
+  const [activeStartPickerIndex, setActiveStartPickerIndex] =
+  useState<number | null>(null);
+  const [activeEndPickerIndex, setActiveEndPickerIndex] =
+  useState<number | null>(null);
 
   const { data: companyData } = useCompanies();
   const { data: eqTypeData } = useEquipmentTypeList();
@@ -408,6 +412,16 @@ export default function MaintenanceFormScreen() {
     setChecklist(formData.checklist);
   }, [isEditing, checklistData, formData]);
   
+  const formatTime = (date: Date) =>
+  date.toLocaleTimeString("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  const timeToMinutes = (time: string) => {
+    const [h, m] = time.split(":").map(Number);
+    return h * 60 + m;
+  };
 
    const getSelectedServices = (): string[] => {
     const SERVICE_LABELS: Record<string, string> = {
@@ -645,13 +659,88 @@ export default function MaintenanceFormScreen() {
 
               {/* Start & End times in row */}
               <View style={styles.timeRow}>
+                 {/* START TIME */}
+                  <View style={styles.serviceTimeField}>
+                    <Pressable onPress={() => setActiveStartPickerIndex(index)}>
+                      <FormInput
+                        label="Start"
+                        placeholder="HH:MM"
+                        value={time.startTime}
+                        editable={false}
+                        pointerEvents="none"
+                      />
+                    </Pressable>
+
+                    {activeStartPickerIndex === index && (
+                      <DateTimePicker
+                        value={new Date()}
+                        mode="time"
+                        display={Platform.OS === "ios" ? "spinner" : "default"}
+                        onChange={(event, selectedTime) => {
+                          setActiveStartPickerIndex(null);
+
+                          if (event.type === "dismissed" || !selectedTime) return;
+
+                          const formatted = selectedTime.toLocaleTimeString("en-GB", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          });
+
+                          updateServiceTime(index, "startTime", formatted);
+                        }}
+                      />
+                    )}
+                  </View>
+                  {/* END TIME */}
+                  <View style={styles.serviceTimeField}>
+                    <Pressable onPress={() => setActiveEndPickerIndex(index)}>
+                      <FormInput
+                        label="End"
+                        placeholder="HH:MM"
+                        value={time.endTime}
+                        editable={false}
+                        pointerEvents="none"
+                      />
+                    </Pressable>
+
+                    {activeEndPickerIndex === index && (
+                      <DateTimePicker
+                        value={new Date()}
+                        mode="time"
+                        display={Platform.OS === "ios" ? "spinner" : "default"}
+                        onChange={(event, selectedTime) => {
+                          setActiveEndPickerIndex(null);
+                          if (event.type === "dismissed" || !selectedTime) return;
+
+                          const end = formatTime(selectedTime);
+
+                          //  Block invalid end time
+                          if (
+                            time.startTime &&
+                            timeToMinutes(end) < timeToMinutes(time.startTime)
+                          ) {
+                            Toast.show({
+                              type: "error",
+                              text1: "Invalid Time",
+                              text2: "End time cannot be earlier than start time",
+                            });
+                            return;
+                          }
+
+                          updateServiceTime(index, "endTime", end);
+                        }}
+                      />
+                    )}
+                  </View>
+              </View>
+              {/* <View style={styles.timeRow}>
                 <View style={styles.serviceTimeField}>
                   <FormInput label="Start" placeholder="HH:MM" value={time.startTime} onChangeText={(v) => updateServiceTime(index, "startTime", v)} />
                 </View>
                 <View style={styles.serviceTimeField}>
                   <FormInput label="End" placeholder="HH:MM" value={time.endTime} onChangeText={(v) => updateServiceTime(index, "endTime", v)} />
                 </View>
-              </View>
+              </View> */}
             </View>
           ))}
           {serviceTimes.length < 4 && (

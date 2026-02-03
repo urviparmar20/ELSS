@@ -209,7 +209,7 @@ export default function ProfileScreen() {
         {/* Footer */}
         <View style={styles.footer}>
           <ThemedText type="small" style={{ color: colors.textSecondary }}>
-            ELSS v1.0.0
+            ELSS v{process.env.EXPO_PUBLIC_APP_VERSION}
           </ThemedText>
         </View>
       </ScrollView>

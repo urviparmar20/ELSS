@@ -66,6 +66,9 @@ export default function ServiceReportFormScreen() {
   const token = useSelector((state: RootState) => state.auth.token);
   const userId = useSelector((state: RootState) => state.auth.user?.user_id);
 
+  type SubmitAction = "draft" | "submit" | null;
+  const [activeAction, setActiveAction] = useState<SubmitAction>(null);
+
   const { mutateAsync, isPending } = useStoreServiceReport(token);
 
   const existingReport = route.params?.report || null;
@@ -74,10 +77,10 @@ export default function ServiceReportFormScreen() {
     () => (existingReport ? mapRawServiceReport(existingReport.raw) : null),
     [existingReport]
   );
-// console.log('formData',formData);
 
   const isEditing = !!existingReport;
-  
+  const isSubmitted = isEditing && existingReport?.status === "completed";
+
   const [showAlert, setShowAlert] = useState(false);
   const [showVerify, setShowVerify] = useState(false);
 
@@ -132,6 +135,8 @@ export default function ServiceReportFormScreen() {
   const [technicianSignature, setTechnicianSignature] = useState("");
   const [clientSignature, setClientSignature] = useState("");
   const [completionDate, setCompletionDate] = useState(formData?.completionDate || new Date().toISOString().split("T")[0]);
+  
+
 
   // const [images, setImages] = useState<RNImage[]>(formData?.images || []);
 
@@ -464,7 +469,8 @@ export default function ServiceReportFormScreen() {
 
   
   const handleSaveAsDraft = async () => {
-    
+    setActiveAction("draft");
+
     const { valid, errors } = validateForm({
       companyId,
       address,
@@ -560,9 +566,14 @@ export default function ServiceReportFormScreen() {
         text2: "Failed to draft report",
       });
     }
+    finally {
+      setActiveAction(null);
+    }
   };
 
   const handleSubmit = async () => {
+    setActiveAction("submit");
+
     const { valid, errors } = validateForm({
       companyId,
       address,
@@ -657,7 +668,9 @@ export default function ServiceReportFormScreen() {
         text1: "Error",
         text2: "Failed to save report",
       });
-      
+    }
+    finally {
+      setActiveAction(null);
     }
   };
 
@@ -1136,12 +1149,27 @@ export default function ServiceReportFormScreen() {
 
         {/* Buttons */}
         <View style={[styles.buttonContainer, { paddingBottom: insets.bottom + 100 }]}>
-          <CustomButton onPress={handleSaveAsDraft} style={[styles.draftButton, { backgroundColor: colors.secondary }]}>{isPending ? <CustomLoader color="#fff" />: "Save as Draft"}</CustomButton>
-          <CustomButton onPress={handleSubmit} style={[styles.submitButton, { backgroundColor: colors.primary }]}>{isPending
-            ? <CustomLoader color="#fff" />
-            : isEditing
-              ? "Update Report"
-              : "Submit Report"}
+          <CustomButton 
+            onPress={handleSaveAsDraft}
+            disabled={
+              isSubmitted || (isPending && activeAction !== "draft")
+            }
+            style={[styles.draftButton, { backgroundColor: colors.secondary }]}>
+            {isSubmitted
+              ? "Draft Disabled"
+              : activeAction === "draft" && isPending
+                ? <CustomLoader color="#fff" />
+                : "Save as Draft"}
+          </CustomButton>
+          <CustomButton 
+            disabled={isPending && activeAction !== "submit"}
+            onPress={handleSubmit} 
+            style={[styles.submitButton, { backgroundColor: colors.primary }]}>
+              {activeAction === "submit" && isPending
+                ? <CustomLoader color="#fff" />
+                : isEditing
+                  ? "Update Report"
+                  : "Submit Report"}
           </CustomButton>
         </View>
       </KeyboardAwareScrollViewCompat>

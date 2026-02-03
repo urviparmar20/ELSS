@@ -2,17 +2,8 @@ import React from 'react';
 import { View, Image, Text, StyleSheet } from 'react-native';
 import { Images } from '../../assets/images';
 import CustomLoader from '../components/CustomLoader';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/RootNavigator';
 
-type SplashScreenNavigationProp = NativeStackNavigationProp<RootStackParamList, 'Splash'>;
-
-type Props = {
-  navigation: SplashScreenNavigationProp;
-  isAuthenticated: boolean;
-};
-
-const SplashScreen: React.FC<Props> = () => {
+const SplashScreen: React.FC = () => {
  
   return (
     <View style={styles.container}>
@@ -21,7 +12,9 @@ const SplashScreen: React.FC<Props> = () => {
         <Image source={Images.logo} style={styles.logo} resizeMode="contain" />
         <CustomLoader />
       </View>
-      <Text style={styles.versionText}>v1.0.0</Text>
+      <Text style={styles.versionText}>        
+        v{process.env.EXPO_PUBLIC_APP_VERSION}
+      </Text>
     </View>
   );
 };

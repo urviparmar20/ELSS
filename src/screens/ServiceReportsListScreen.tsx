@@ -106,7 +106,7 @@ export default function ServiceReportsListScreen() {
     }
   };
   const isFirstLoading =
-  isLoading && isInitialLoad.current;
+  isLoading && reports.length === 0;
 
   const hasData =
     !isLoading && reports.length > 0;

@@ -18,11 +18,12 @@ export type RootStackParamList = {
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function RootNavigator() {
-  const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
+  const isAuthenticated = useSelector(
+    (state: RootState) => state.auth.isAuthenticated
+  );
 
   const [showSplash, setShowSplash] = useState(true);
 
-  // Hide splash after first app load
   useEffect(() => {
     const timer = setTimeout(() => {
       setShowSplash(false);
@@ -33,7 +34,9 @@ export default function RootNavigator() {
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      {isAuthenticated ? (
+      {showSplash ? (
+        <Stack.Screen name="Splash" component={SplashScreen} />
+      ) : isAuthenticated ? (
         <Stack.Screen name="Main" component={AppDrawerNavigator} />
       ) : (
         <Stack.Screen name="Auth" component={AuthNavigator} />
