@@ -64,7 +64,7 @@ export const buildGMFormData = (
 
   formData.append("service_department", params.service_department);
   formData.append("current_date", params.current_date);
-  formData.append("is_pending", "Y");
+  formData.append("is_pending", params.is_pending);
   
   formData.append(
     "operation_check_list[]",

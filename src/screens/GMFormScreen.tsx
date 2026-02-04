@@ -77,6 +77,7 @@ export default function MaintenanceFormScreen() {
   );
 
   const isEditing = !!existingReport;
+  const isSubmitted = isEditing && existingReport?.is_pending === "N";
 
   const [companyOptions, setCompanyOptions] = useState<{ id: string; name: string }[]>([]);
   const [equipmentTypeOptions, setEquipmentTypeOptions] = useState<
@@ -115,6 +116,9 @@ export default function MaintenanceFormScreen() {
   const [checklist, setChecklist] = useState<Record<string, boolean>>(formData?.checklist || {});
   const [partsLubricants, setPartsLubricants] = useState<PartsLubricants>(formData?.partsLubricants || DEFAULT_PARTS_LUBRICANTS);
   const [companyName, setCompanyName] = useState(formData?.companyName || "");
+
+  type SubmitAction = "draft" | "submit" | null;
+  const [activeAction, setActiveAction] = useState<SubmitAction>(null);
 
   const [technicianSignature, setTechnicianSignature] = useState("");
   const [supervisorSignature, setSupervisorSignature] = useState("");
@@ -440,7 +444,8 @@ export default function MaintenanceFormScreen() {
   const selectedServices = getSelectedServices();
 
   
-  const handleSubmit = async () => {
+  const handleFormSubmit = async (action: SubmitAction) => {
+    setActiveAction(action);
   
     const { valid, errors } = validateForm({
       companyId,
@@ -469,6 +474,7 @@ export default function MaintenanceFormScreen() {
         text1: "Validation Error",
         text2: errors[0],
       });
+      setActiveAction(null);
       return;
     }
     
@@ -510,6 +516,7 @@ export default function MaintenanceFormScreen() {
         current_date: completionDate instanceof Date ? completionDate.toISOString() : completionDate,
         operation_check_list: checklist,
         is_otp_verified: "Y",
+        is_pending: action === "draft" ? "Y" : "N",
       });
 
       console.log("=== FORMDATA START ===");
@@ -527,7 +534,8 @@ export default function MaintenanceFormScreen() {
         Toast.show({
           type: "success",
           text1: "Success",
-          text2: "General Maintenace saved successfully.",
+          text2: action === "draft" ? "Draft Saved" : "Submitted Successfully",
+
         });
         navigation.goBack()
       }
@@ -892,11 +900,27 @@ export default function MaintenanceFormScreen() {
         </Card>
 
         <View style={[styles.buttonContainer, { paddingBottom: insets.bottom + 100 }]}>
-          <CustomButton onPress={handleSubmit} style={[styles.submitButton, { backgroundColor: colors.primary }]}>{isPending
-            ? <CustomLoader color="#fff" />
-            : isEditing
-              ? "Update"
-              : "Submit"}
+        <CustomButton 
+            onPress={() => handleFormSubmit("draft")}
+            disabled={
+              isSubmitted || (isPending && activeAction !== "draft")
+            }
+            style={[styles.draftButton, { backgroundColor: colors.secondary }]}>
+            {isSubmitted
+              ? "Draft Disabled"
+              : activeAction === "draft" && isPending
+                ? <CustomLoader color="#fff" />
+                : "Save as Draft"}
+          </CustomButton>
+          <CustomButton 
+            disabled={isPending && activeAction !== "submit"}
+            onPress={() => handleFormSubmit("submit")} 
+            style={[styles.submitButton, { backgroundColor: colors.primary }]}>
+              {activeAction === "submit" && isPending
+                ? <CustomLoader color="#fff" />
+                : isEditing
+                  ? "Update"
+                  : "Submit"}
           </CustomButton>
         </View>
       </KeyboardAwareScrollViewCompat>
@@ -961,5 +985,6 @@ const styles = StyleSheet.create({
     color: Colors.light.success,
     textAlign: "center",
     fontWeight: "bold"
-  }
+  },
+  draftButton: { marginBottom: Spacing.md },
 });

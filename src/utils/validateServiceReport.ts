@@ -46,19 +46,19 @@ export const validateForm = (params: ValidateFormParams): { valid: boolean; erro
   if (!clientName.trim()) errors.push("Client name is required");
   if (!clientContactNo.trim()) errors.push("Client contact number is required");
   // ---- Service Times (up to 4) ----
-  const ordinals = ["First", "Second", "Third", "Fourth"];
+  // const ordinals = ["First", "Second", "Third", "Fourth"];
 
-  for (let i = 0; i < 4; i++) {
-    const prefix = ordinals[i];
-    const t = serviceTimes[i] || { date: "", startTime: "", endTime: "" }; // default empty
+  // for (let i = 0; i < 4; i++) {
+  //   const prefix = ordinals[i];
+  //   const t = serviceTimes[i] || { date: "", startTime: "", endTime: "" }; // default empty
 
-    if (!t.date) errors.push(`Select ${prefix} Date`);
-    if (!t.startTime) errors.push(`Select ${prefix} Start Time`);
-    if (!t.endTime) errors.push(`Select ${prefix} End Time`);
-    if (t.startTime && t.endTime && timeToMinutes(t.endTime) <= timeToMinutes(t.startTime)) {
-      errors.push(`${prefix} service: End time must be later than start time`);
-    }
-  }
+  //   if (!t.date) errors.push(`Select ${prefix} Date`);
+  //   if (!t.startTime) errors.push(`Select ${prefix} Start Time`);
+  //   if (!t.endTime) errors.push(`Select ${prefix} End Time`);
+  //   if (t.startTime && t.endTime && timeToMinutes(t.endTime) <= timeToMinutes(t.startTime)) {
+  //     errors.push(`${prefix} service: End time must be later than start time`);
+  //   }
+  // }
 
   if (!checklistValues.some((v) => v === true)) {
     errors.push("At least one operation checklist item must be selected");
@@ -85,8 +85,10 @@ export const validateForm = (params: ValidateFormParams): { valid: boolean; erro
 
   if (!technicianSignature) errors.push("Technician signature is required");
   if (!clientSignature) errors.push("Client signature is required");
-  if (!isChargeable) errors.push("Select service is Chargeable or Not");
-
+  if (isChargeable === null) {
+    errors.push("Select service is Chargeable or Not");
+  }
+  
 
   return { valid: errors.length === 0, errors };
 };

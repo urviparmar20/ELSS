@@ -40,6 +40,7 @@ export interface GMStoreParams {
   current_date: string,
   operation_check_list: Record<string, boolean>,
   is_otp_verified: string,
+  is_pending: string
 }
 
 export interface ServiceTime {
