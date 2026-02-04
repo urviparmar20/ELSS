@@ -247,6 +247,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
+    pointerEvents: "none",
   },
   lockOverlay: {
     ...StyleSheet.absoluteFillObject,
