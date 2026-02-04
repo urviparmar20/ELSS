@@ -48,7 +48,6 @@ export const validateForm = (params: ValidateFormParams): { valid: boolean; erro
   // --------------------
   // SERVICES (Weekly / Monthly / etc.)
   // --------------------
-  console.log('services',services);
   
   if (!services || services.length === 0) {
     errors.push("Select at least one service");

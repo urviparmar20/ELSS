@@ -17,6 +17,7 @@ interface SignatureBoxProps {
   label: string;
   value: string;
   onChange: (imageUri: string) => void;
+  readOnly?: boolean;
 }
 
 interface Point {
@@ -24,7 +25,8 @@ interface Point {
   y: number;
 }
 
-export function SignatureBox({ label, value, onChange }: SignatureBoxProps) {
+export function SignatureBox({ label, value, onChange, readOnly = false,
+}: SignatureBoxProps) {
   const colors = Colors.light;
 
   const viewRef = useRef<View>(null);
@@ -56,7 +58,7 @@ export function SignatureBox({ label, value, onChange }: SignatureBoxProps) {
     return path;
   }, []);
 
-  const drawingDisabled = !!imageUri;
+  const drawingDisabled = readOnly || !!imageUri;
 
   /* ---------------- Pan Responder ---------------- */
   const panResponder = useRef(
@@ -132,8 +134,8 @@ export function SignatureBox({ label, value, onChange }: SignatureBoxProps) {
 
         <Pressable
           onPress={handleClear}
-          style={[styles.clearButton, { opacity: hasSignature ? 1 : 0.4 }]}
-          disabled={!hasSignature}
+          style={[styles.clearButton, { opacity: readOnly || !hasSignature ? 0.4 : 1, }]}
+          disabled={readOnly || !hasSignature}
         >
           <Feather name="trash-2" size={14} color={colors.error} />
           <ThemedText type="small" style={{ color: colors.error, marginLeft: 4 }}>
@@ -185,7 +187,7 @@ export function SignatureBox({ label, value, onChange }: SignatureBoxProps) {
               )}
             </Svg>
 
-            {!hasSignature && (
+            {!hasSignature && !readOnly && (
               <View style={styles.placeholder}>
                 <Feather
                   name="edit-3"

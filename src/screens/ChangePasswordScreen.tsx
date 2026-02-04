@@ -70,7 +70,6 @@ const ChangePasswordScreen = () => {
   } = useChangePassword();
 
   const onSubmit = (values: ChangePasswordFormValues) => {
-    console.log("Change password payload:", values);
     changePassword(values.newPassword, {
       onSuccess: () => {
         Toast.show({

@@ -10,9 +10,10 @@ interface FormDatePickerProps {
   value: string;
   onChange: (date: string) => void;
   placeholder?: string;
+  readOnly?: boolean;
 }
 
-export function FormDatePicker({ label, value, onChange, placeholder = "Select date" }: FormDatePickerProps) {
+export function FormDatePicker({ label, value, onChange, placeholder = "Select date", readOnly = false, }: FormDatePickerProps) {
   const [show, setShow] = useState(false);
   const colors = Colors.light;
 
@@ -53,8 +54,21 @@ export function FormDatePicker({ label, value, onChange, placeholder = "Select d
       <View style={styles.container}>
         {label ? <ThemedText type="small" style={[styles.label, { color: colors.textSecondary }]}>{label}</ThemedText> : null}
         <Pressable
-          style={[styles.inputContainer, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}
-          onPress={() => setShow(true)}
+          style={[
+            styles.inputContainer,
+            {
+              backgroundColor: readOnly
+                ? colors.backgroundSecondary
+                : colors.inputBackground,
+              borderColor: colors.inputBorder,
+              opacity: readOnly ? 0.6 : 1,
+            },
+          ]}
+          onPress={() => {
+            if (!readOnly) {
+              setShow(true);
+            }
+          }}
         >
           <ThemedText type="body" style={value ? {} : { color: colors.textSecondary }}>
             {formatDisplayDate(value)}
@@ -73,7 +87,7 @@ export function FormDatePicker({ label, value, onChange, placeholder = "Select d
                   </Pressable>
                 </View>
                 <TextInput
-                  style={[styles.webDateInput, { borderColor: colors.inputBorder, color: colors.text }]}
+                  style={[styles.webDateInput, { borderColor: colors.inputBorder, color: colors.text }, readOnly && { opacity: 0.6 },]}
                   value={value}
                   onChangeText={(text) => {
                     if (/^\d{0,4}(-\d{0,2})?(-\d{0,2})?$/.test(text)) {
@@ -83,6 +97,7 @@ export function FormDatePicker({ label, value, onChange, placeholder = "Select d
                   placeholder="YYYY-MM-DD"
                   placeholderTextColor={colors.textSecondary}
                   keyboardType="numbers-and-punctuation"
+                  
                 />
                 <View style={styles.quickDates}>
                   <Pressable
@@ -141,7 +156,7 @@ export function FormDatePicker({ label, value, onChange, placeholder = "Select d
         <Feather name="calendar" size={20} color={colors.textSecondary} />
       </Pressable>
 
-      {show && Platform.OS === "android" ? (
+      {show && !readOnly && Platform.OS === "android" ? (
         <DateTimePicker
           value={parseDate(value)}
           mode="date"
@@ -150,7 +165,7 @@ export function FormDatePicker({ label, value, onChange, placeholder = "Select d
         />
       ) : null}
 
-      {show && Platform.OS === "ios" ? (
+      {show && !readOnly && Platform.OS === "ios" ? (
         <Modal transparent animationType="slide">
           <View style={styles.modalOverlay}>
             <View style={[styles.modalContent, { backgroundColor: colors.backgroundDefault }]}>

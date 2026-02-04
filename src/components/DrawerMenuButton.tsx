@@ -9,7 +9,6 @@ export default function DrawerMenuButton() {
   return (
     <TouchableOpacity
       onPress={() => navigation.dispatch(DrawerActions.openDrawer())}
-      style={{ marginLeft: 16 }}
     >
       <Feather name="menu" size={24} />
     </TouchableOpacity>

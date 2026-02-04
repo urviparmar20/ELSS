@@ -165,7 +165,7 @@ export default function GMListScreen() {
         <Pressable
           style={[styles.actionButton, { backgroundColor: colors.primary + "20" }]}
           onPress={() =>
-            navigation.navigate("GMForm", { report: item })
+            navigation.navigate("GMForm", { report: item, readOnly: false })
           }
         >
           <Feather name="edit-2" size={16} color={colors.primary} />

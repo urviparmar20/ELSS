@@ -11,6 +11,7 @@ interface FormInputProps extends TextInputProps {
   icon?: keyof typeof Feather.glyphMap;
   rightIcon?: keyof typeof Feather.glyphMap;
   onRightIconPress?: () => void;
+  readOnly?: boolean;
 }
 
 export function FormInput({
@@ -22,6 +23,7 @@ export function FormInput({
   style,
   multiline,
   numberOfLines,
+  readOnly = false,
   ...props
 }: FormInputProps) {
   const { theme, isDark } = useTheme();
@@ -59,6 +61,7 @@ export function FormInput({
             styles.input, 
             { color: theme.text },
             isMultiline && { textAlignVertical: "top", minHeight: minHeight - Spacing.md * 2 },
+            readOnly && { opacity: 0.8 },
             style
           ]}
           placeholderTextColor={colors.textSecondary}

@@ -26,11 +26,7 @@ export const storeServiceReportApi = async ({
   });
 
   if (!response.ok) {
-    const text = await response.text();
-    console.log('response',response);
-
-    console.log('text',text);
-    
+    const text = await response.text();    
     throw new Error(`HTTP ${response.status}: ${text}`);
   }
 

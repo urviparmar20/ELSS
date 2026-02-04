@@ -9,14 +9,19 @@ interface FormCheckboxProps {
   label: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
+  readOnly?: boolean;
 }
 
-export function FormCheckbox({ label, checked, onChange }: FormCheckboxProps) {
+export function FormCheckbox({ label, checked, onChange, readOnly = false }: FormCheckboxProps) {
   const { theme, isDark } = useTheme();
   const colors = isDark ? Colors.dark : Colors.light;
 
   return (
-    <Pressable style={styles.container} onPress={() => onChange(!checked)}>
+    <Pressable style={styles.container} onPress={() => {
+      if (!readOnly) {
+        onChange(!checked);
+      }
+    }}>
       <View
         style={[
           styles.checkbox,

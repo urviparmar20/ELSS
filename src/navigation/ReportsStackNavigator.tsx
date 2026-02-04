@@ -5,11 +5,15 @@ import ServiceReportsListScreen from "../screens/ServiceReportsListScreen";
 import ServiceReportFormScreen from "../screens/ServiceReportFormScreen";
 import { useScreenOptions } from "../hooks/useScreenOptions";
 import DrawerMenuButton from "../components/DrawerMenuButton";
+import PastSRListScreen from "../screens/PastSRListScreen";
 
 export type ReportsStackParamList = {
   ServiceReportsList: undefined;
-  ServiceReportDetail: { id: string };
-  ServiceReportForm: { report?: any };
+  PastSRList: undefined;
+  ServiceReportForm: {
+    report?: any;
+    readOnly?: boolean;
+  } | undefined;
 };
 
 const Stack = createNativeStackNavigator<ReportsStackParamList>();
@@ -26,11 +30,15 @@ export default function ReportsStackNavigator() {
         headerLeft: () => <DrawerMenuButton />,
       }}
       />
-      {/* <Stack.Screen
-        name="ServiceReportDetail"
-        component={ServiceReportDetailScreen}
-        options={{ headerTitle: "Report Detail" }}
-      />*/}
+      {/* Drawer entry */}
+      <Stack.Screen
+        name="PastSRList"
+        component={PastSRListScreen}
+        options={{
+          title: "Past SR",
+          headerLeft: () => <DrawerMenuButton />,
+        }}
+      />
       <Stack.Screen
         name="ServiceReportForm"
         component={ServiceReportFormScreen}

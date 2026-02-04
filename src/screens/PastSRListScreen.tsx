@@ -121,7 +121,7 @@ export default function PastSRListScreen() {
     <Card
       elevation={1}
       style={styles.listItem}
-      // onPress={() => navigation.navigate("ServiceReportDetail", { id: item.id })}
+      onPress={() => navigation.navigate("ServiceReportForm", { report: item, readOnly: true })}
     >
       <View style={styles.listItemHeader}>
         <View style={styles.listItemInfo}>

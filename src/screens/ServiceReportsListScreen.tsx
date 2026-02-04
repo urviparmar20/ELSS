@@ -178,9 +178,8 @@ export default function ServiceReportsListScreen() {
       <View style={styles.listItemActions}>
         <Pressable
           style={[styles.actionButton, { backgroundColor: colors.primary + "20" }]}
-          // onPress={() => navigation.navigate("ServiceReportForm", { id: item.id })}
           onPress={() =>
-            navigation.navigate("ServiceReportForm", { report: item })
+            navigation.navigate("ServiceReportForm", { report: item, readOnly: false })
           }
           
         >

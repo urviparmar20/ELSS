@@ -19,7 +19,6 @@ export const usePastSRList = (page: number) => {
       });
       
       const reportsArray = raw?.data?.serviceReports ?? [];
-      console.log('reportsArray',reportsArray);
 
 
       // Merge UI fields with full raw object

@@ -72,6 +72,7 @@ export default function ServiceReportFormScreen() {
   const { mutateAsync, isPending } = useStoreServiceReport(token);
 
   const existingReport = route.params?.report || null;
+  const readOnly = route.params?.readOnly ?? false;
   
   const formData = React.useMemo(
     () => (existingReport ? mapRawServiceReport(existingReport.raw) : null),
@@ -249,7 +250,7 @@ export default function ServiceReportFormScreen() {
   
   useEffect(() => {
     navigation.setOptions({
-      headerTitle: isEditing ? "Edit Service Report" : "New Service Report",
+      headerTitle: readOnly ? "Past Service Report" : isEditing ? "Edit Service Report" : "New Service Report",
     });
   }, [isEditing, navigation]);
 
@@ -766,17 +767,30 @@ export default function ServiceReportFormScreen() {
             options={companyOptions}
             selectedValue={companyId}
             onValueChange={(id) => setCompanyId(id)}
+            readOnly={readOnly}
           />
 
-          <FormInput label="Address" placeholder="Enter address" value={address} onChangeText={setAddress} multiline />
+          <FormInput 
+            label="Address" 
+            placeholder="Enter address" 
+            value={address} 
+            onChangeText={setAddress} 
+            multiline 
+            editable={!readOnly}
+            selectTextOnFocus={!readOnly}
+            readOnly={readOnly}
+          />
         </Card>
 
         {/* Equipment Details */}
         <Card elevation={1} style={styles.section}>
           <ThemedText type="h4" style={styles.sectionTitle}>Equipment Details</ThemedText>
-          <FormInput label="M/C or Serial No *" placeholder="Enter serial number" value={mcSerialNo} onChangeText={setMcSerialNo} />
-          <FormInput label="Hour Meter" placeholder="Enter hour meter reading" value={hourMeter} onChangeText={setHourMeter} keyboardType="numeric" />
-          <FormInput label="Job No" placeholder="Enter job number" value={jobNo} onChangeText={setJobNo} />
+          <FormInput label="M/C or Serial No *" placeholder="Enter serial number" value={mcSerialNo} onChangeText={setMcSerialNo} editable={!readOnly}
+            selectTextOnFocus={!readOnly} readOnly={readOnly}/>
+          <FormInput label="Hour Meter" placeholder="Enter hour meter reading" value={hourMeter} onChangeText={setHourMeter} keyboardType="numeric" editable={!readOnly}
+            selectTextOnFocus={!readOnly} readOnly={readOnly}/>
+          <FormInput label="Job No" placeholder="Enter job number" value={jobNo} onChangeText={setJobNo} editable={!readOnly}
+            selectTextOnFocus={!readOnly} readOnly={readOnly}/>
 
           <FormDropdown
             label="Equipment Type"
@@ -787,6 +801,7 @@ export default function ServiceReportFormScreen() {
               setEquipmentTypeId(id);
               setEquipmentId(""); // reset equipment
             }}
+            readOnly={readOnly}
           />
 
           <FormDropdown
@@ -795,10 +810,11 @@ export default function ServiceReportFormScreen() {
             options={equipmentOptions} // { id, name }
             selectedValue={equipmentId}
             onValueChange={(id) => setEquipmentId(id)}
+            readOnly={readOnly}
           />
 
-          <FormInput label="Client Name" placeholder="Enter client name" value={clientName} onChangeText={setClientName} />
-          <FormInput label="Client Contact No" placeholder="Enter client contact" value={clientContactNo} onChangeText={setClientContactNo} keyboardType="phone-pad" />
+          <FormInput label="Client Name" placeholder="Enter client name" value={clientName} onChangeText={setClientName} editable={!readOnly} selectTextOnFocus={!readOnly} readOnly={readOnly}/>
+          <FormInput label="Client Contact No" placeholder="Enter client contact" value={clientContactNo} onChangeText={setClientContactNo} keyboardType="phone-pad" editable={!readOnly} selectTextOnFocus={!readOnly} readOnly={readOnly}/>
 
           {/* OTP Section */}
           {
@@ -849,14 +865,20 @@ export default function ServiceReportFormScreen() {
           <ThemedText type="small" style={styles.label}>Service Times</ThemedText>
           {serviceTimes.map((time, index) => (
             <View key={index} style={[styles.serviceTimeCard, { borderColor: colors.inputBorder }]}>
-              {serviceTimes.length > 1 && (
-                <Pressable style={styles.deleteButton} onPress={() => removeServiceTime(index)}><Feather name="trash-2" size={16} color={colors.buttonText} /></Pressable>
+              {!readOnly && serviceTimes.length > 1 && (
+                <Pressable
+                style={styles.deleteButton}
+                onPress={() => removeServiceTime(index)}
+              ><Feather name="trash-2" size={16} color={colors.buttonText} /></Pressable>
               )}
-              <FormDatePicker label="Date" value={time.date} onChange={(v) => updateServiceTime(index, "date", v)} />
+              <FormDatePicker label="Date" value={time.date} onChange={(v) => updateServiceTime(index, "date", v)} readOnly={readOnly}/>
               <View style={styles.timeRow}>
                  {/* START TIME */}
                   <View style={styles.serviceTimeField}>
-                    <Pressable onPress={() => setActiveStartPickerIndex(index)}>
+                    <Pressable 
+                      disabled={readOnly}
+                      onPress={() => setActiveStartPickerIndex(index)}
+                      style={readOnly && { opacity: 0.8 }}>
                       <FormInput
                         label="Start"
                         placeholder="HH:MM"
@@ -866,7 +888,7 @@ export default function ServiceReportFormScreen() {
                       />
                     </Pressable>
 
-                    {activeStartPickerIndex === index && (
+                    {activeStartPickerIndex === index && !readOnly && (
                       <DateTimePicker
                         value={new Date()}
                         mode="time"
@@ -888,7 +910,11 @@ export default function ServiceReportFormScreen() {
                   </View>
                   {/* END TIME */}
                   <View style={styles.serviceTimeField}>
-                    <Pressable onPress={() => setActiveEndPickerIndex(index)}>
+                    <Pressable
+                      disabled={readOnly}
+                      onPress={() => setActiveEndPickerIndex(index)}
+                      style={readOnly && { opacity: 0.6 }}
+                    >
                       <FormInput
                         label="End"
                         placeholder="HH:MM"
@@ -898,7 +924,7 @@ export default function ServiceReportFormScreen() {
                       />
                     </Pressable>
 
-                    {activeEndPickerIndex === index && (
+                    {activeEndPickerIndex === index && !readOnly && (
                       <DateTimePicker
                         value={new Date()}
                         mode="time"
@@ -930,7 +956,7 @@ export default function ServiceReportFormScreen() {
               </View> 
             </View>
           ))}
-          {serviceTimes.length < 4 && <Pressable style={[styles.addButton, { borderColor: colors.primary }]} onPress={addServiceTime}><Feather name="plus" size={16} color={colors.primary} /><ThemedText type="small" style={{ color: colors.primary, marginLeft: Spacing.xs }}>Add Service Time</ThemedText></Pressable>}
+          {serviceTimes.length < 4 && !readOnly && <Pressable style={[styles.addButton, { borderColor: colors.primary }]} onPress={addServiceTime}><Feather name="plus" size={16} color={colors.primary} /><ThemedText type="small" style={{ color: colors.primary, marginLeft: Spacing.xs }}>Add Service Time</ThemedText></Pressable>}
          
         </Card>
 
@@ -938,8 +964,20 @@ export default function ServiceReportFormScreen() {
         <Card elevation={1} style={styles.section}>
           <View style={styles.sectionHeader}>
             <ThemedText type="h4" style={styles.sectionTitle}>OPERATION CHECK LISTS:</ThemedText>
-            <Pressable style={[styles.selectAllButton, { backgroundColor: colors.primary + "15" }]} onPress={handleSelectAllChecklist}>
-              <Feather name={isAllChecklistSelected ? "check-square" : "square"} size={16} color={colors.primary} />
+            <Pressable
+              style={[
+                styles.selectAllButton,
+                {
+                  backgroundColor: readOnly
+                    ? colors.inputBorder
+                    : colors.primary + "15",
+                  opacity: readOnly ? 0.6 : 1,
+                },
+              ]}
+              disabled={readOnly}
+              onPress={handleSelectAllChecklist}
+            >
+              <Feather name={isAllChecklistSelected ? "check-square" : "square"} size={16} color={colors.primary}/>
               <ThemedText type="small" style={{ color: colors.primary, marginLeft: Spacing.xs }}>{isAllChecklistSelected ? "Deselect All" : "Select All"}</ThemedText>
             </Pressable>
           </View>
@@ -953,6 +991,7 @@ export default function ServiceReportFormScreen() {
                   label={item.label}
                   checked={checklist[item.key] || false}
                   onChange={(checked) => handleChecklistChange(item.key, checked)}
+                  readOnly={readOnly}
                 />))
               }
             </View>
@@ -965,6 +1004,7 @@ export default function ServiceReportFormScreen() {
                   label={item.label}
                   checked={checklist[item.key] || false}
                   onChange={(checked) => handleChecklistChange(item.key, checked)}
+                  readOnly={readOnly}
                 />))
               }
             </View>
@@ -977,6 +1017,7 @@ export default function ServiceReportFormScreen() {
                  label={item.label}
                  checked={checklist[item.key] || false}
                  onChange={(checked) => handleChecklistChange(item.key, checked)}
+                 readOnly={readOnly}
                />
               ))}
             </View>
@@ -993,6 +1034,7 @@ export default function ServiceReportFormScreen() {
                 placeholder="Enter details"
                 value={partsLubricants.engineAirFilterPri}
                 onChangeText={(v) => updatePartsLubricants("engineAirFilterPri", v)}
+                editable={!readOnly} selectTextOnFocus={!readOnly} readOnly={readOnly}
                 />
             </View>
             <View style={styles.inputHalf}>
@@ -1001,46 +1043,47 @@ export default function ServiceReportFormScreen() {
                   placeholder="Enter details"
                   value={partsLubricants.engineAirFilterSec}
                   onChangeText={(v) => updatePartsLubricants("engineAirFilterSec", v)}
+                  editable={!readOnly} selectTextOnFocus={!readOnly} readOnly={readOnly}
                 />
             </View>  
             <View style={styles.inputHalf}>
-              <FormInput label="Compressor Air Filter(Pri)" placeholder="Enter details" value={partsLubricants.compressorAirFilterPri} onChangeText={(v) => updatePartsLubricants("compressorAirFilterPri", v)} />
+              <FormInput label="Compressor Air Filter(Pri)" placeholder="Enter details" value={partsLubricants.compressorAirFilterPri} onChangeText={(v) => updatePartsLubricants("compressorAirFilterPri", v)} editable={!readOnly} selectTextOnFocus={!readOnly} readOnly={readOnly}/>
             </View>
             <View style={styles.inputHalf}>
-              <FormInput label="Compressor Air Filter(Sec)" placeholder="Enter details" value={partsLubricants.compressorAirFilterSec} onChangeText={(v) => updatePartsLubricants("compressorAirFilterSec", v)} />
+              <FormInput label="Compressor Air Filter(Sec)" placeholder="Enter details" value={partsLubricants.compressorAirFilterSec} onChangeText={(v) => updatePartsLubricants("compressorAirFilterSec", v)} editable={!readOnly} selectTextOnFocus={!readOnly} readOnly={readOnly}/>
             </View>
             <View style={styles.inputHalf}>
-              <FormInput label="Oil Filter(Pri)" placeholder="Enter details" value={partsLubricants.oilFilterPri} onChangeText={(v) => updatePartsLubricants("oilFilterPri", v)} />
+              <FormInput label="Oil Filter(Pri)" placeholder="Enter details" value={partsLubricants.oilFilterPri} onChangeText={(v) => updatePartsLubricants("oilFilterPri", v)} editable={!readOnly} selectTextOnFocus={!readOnly} readOnly={readOnly}/>
             </View>
             <View style={styles.inputHalf}>
-              <FormInput label="Oil Filter(Sec)" placeholder="Enter details" value={partsLubricants.oilFilterSec} onChangeText={(v) => updatePartsLubricants("oilFilterSec", v)} />
+              <FormInput label="Oil Filter(Sec)" placeholder="Enter details" value={partsLubricants.oilFilterSec} onChangeText={(v) => updatePartsLubricants("oilFilterSec", v)} editable={!readOnly} selectTextOnFocus={!readOnly} readOnly={readOnly}/>
             </View>
             <View style={styles.inputHalf}>
-              <FormInput label="Compressor Oil Filter(Pri)" placeholder="Enter details" value={partsLubricants.compressorOilFilterPri} onChangeText={(v) => updatePartsLubricants("compressorOilFilterPri", v)} />
+              <FormInput label="Compressor Oil Filter(Pri)" placeholder="Enter details" value={partsLubricants.compressorOilFilterPri} onChangeText={(v) => updatePartsLubricants("compressorOilFilterPri", v)} editable={!readOnly} selectTextOnFocus={!readOnly} readOnly={readOnly}/>
             </View>
             <View style={styles.inputHalf}>
-              <FormInput label="Fuel Filter" placeholder="Enter details" value={partsLubricants.fuelFilter} onChangeText={(v) => updatePartsLubricants("fuelFilter", v)} />
+              <FormInput label="Fuel Filter" placeholder="Enter details" value={partsLubricants.fuelFilter} onChangeText={(v) => updatePartsLubricants("fuelFilter", v)} editable={!readOnly} selectTextOnFocus={!readOnly} readOnly={readOnly}/>
             </View>
             <View style={styles.inputHalf}>
-              <FormInput label="Racor Filter" placeholder="Enter details" value={partsLubricants.racorFilter} onChangeText={(v) => updatePartsLubricants("racorFilter", v)} />
+              <FormInput label="Racor Filter" placeholder="Enter details" value={partsLubricants.racorFilter} onChangeText={(v) => updatePartsLubricants("racorFilter", v)} editable={!readOnly} selectTextOnFocus={!readOnly} readOnly={readOnly}/>
             </View>
             <View style={styles.inputHalf}>
-              <FormInput label="Hydraulic Filter" placeholder="Enter details" value={partsLubricants.hydraulicFilter} onChangeText={(v) => updatePartsLubricants("hydraulicFilter", v)} />
+              <FormInput label="Hydraulic Filter" placeholder="Enter details" value={partsLubricants.hydraulicFilter} onChangeText={(v) => updatePartsLubricants("hydraulicFilter", v)} editable={!readOnly} selectTextOnFocus={!readOnly} readOnly={readOnly}/>
             </View>
             <View style={styles.inputHalf}>
-              <FormInput label="Water Filter" placeholder="Enter details" value={partsLubricants.waterFilter} onChangeText={(v) => updatePartsLubricants("waterFilter", v)} />
+              <FormInput label="Water Filter" placeholder="Enter details" value={partsLubricants.waterFilter} onChangeText={(v) => updatePartsLubricants("waterFilter", v)} editable={!readOnly} selectTextOnFocus={!readOnly} readOnly={readOnly}/>
             </View>
             <View style={styles.inputHalf}>
-              <FormInput label="Engine Oil" placeholder="Enter details" value={partsLubricants.engineOil} onChangeText={(v) => updatePartsLubricants("engineOil", v)} />
+              <FormInput label="Engine Oil" placeholder="Enter details" value={partsLubricants.engineOil} onChangeText={(v) => updatePartsLubricants("engineOil", v)} editable={!readOnly} selectTextOnFocus={!readOnly} readOnly={readOnly}/>
             </View>
             <View style={styles.inputHalf}>
-              <FormInput label="Compressor Oil" placeholder="Enter details" value={partsLubricants.compressorOil} onChangeText={(v) => updatePartsLubricants("compressorOil", v)} />
+              <FormInput label="Compressor Oil" placeholder="Enter details" value={partsLubricants.compressorOil} onChangeText={(v) => updatePartsLubricants("compressorOil", v)} editable={!readOnly} selectTextOnFocus={!readOnly} readOnly={readOnly}/>
             </View>
             <View style={styles.inputHalf}>
-              <FormInput label="Hydraulic Oil" placeholder="Enter details" value={partsLubricants.hydraulicOil} onChangeText={(v) => updatePartsLubricants("hydraulicOil", v)} />
+              <FormInput label="Hydraulic Oil" placeholder="Enter details" value={partsLubricants.hydraulicOil} onChangeText={(v) => updatePartsLubricants("hydraulicOil", v)} editable={!readOnly} selectTextOnFocus={!readOnly} readOnly={readOnly}/>
             </View>
             <View style={styles.inputHalf}>
-              <FormInput label="Transmission Oil" placeholder="Enter details" value={partsLubricants.transmissionOil} onChangeText={(v) => updatePartsLubricants("transmissionOil", v)} />
+              <FormInput label="Transmission Oil" placeholder="Enter details" value={partsLubricants.transmissionOil} onChangeText={(v) => updatePartsLubricants("transmissionOil", v)} editable={!readOnly} selectTextOnFocus={!readOnly} readOnly={readOnly}/>
             </View>   
           </View>
           <ThemedText type="small" style={{ marginBottom: Spacing.sm, fontWeight: "500" }}>
@@ -1053,6 +1096,8 @@ export default function ServiceReportFormScreen() {
                   placeholder={`Other Part ${index + 1}`}
                   value={value}
                   onChangeText={(v) => updateOtherPart(index, v)}
+                  editable={!readOnly} selectTextOnFocus={!readOnly}
+                  readOnly={readOnly}
                 />
               </View>
             ))}
@@ -1105,12 +1150,12 @@ export default function ServiceReportFormScreen() {
 
           <ThemedText type="h4" style={[styles.label, { marginTop: Spacing.lg }]}>Service Type</ThemedText>
           <View style={styles.checkingService}>
-            <FormCheckbox label="Checking" checked={checking} onChange={setChecking} />
-            <FormCheckbox label="Servicing" checked={servicing} onChange={setServicing} />
-            <FormCheckbox label="Repair" checked={repair} onChange={setRepair} />
+            <FormCheckbox label="Checking" checked={checking} onChange={setChecking} readOnly={readOnly}/>
+            <FormCheckbox label="Servicing" checked={servicing} onChange={setServicing} readOnly={readOnly}/>
+            <FormCheckbox label="Repair" checked={repair} onChange={setRepair} readOnly={readOnly}/>
           </View>
           <ThemedText type="h4" style={[styles.sectionTitle, { marginTop: Spacing.lg }]}>Remarks</ThemedText>
-          <FormInput label="Remarks/Description" placeholder="Enter any remarks or description" value={remarks} onChangeText={setRemarks} multiline numberOfLines={4} style={{ height: 100, textAlignVertical: "top" }} />
+          <FormInput label="Remarks/Description" placeholder="Enter any remarks or description" value={remarks} onChangeText={setRemarks} multiline numberOfLines={4} style={{ height: 100, textAlignVertical: "top" }} editable={!readOnly} selectTextOnFocus={!readOnly} readOnly={readOnly}/>
         </Card>
 
         {/* Signatures & Completion */}
@@ -1121,26 +1166,28 @@ export default function ServiceReportFormScreen() {
             label="Technician Signature"
             value={technicianSignature}
             onChange={setTechnicianSignature}
-            disabled={isEditing}
+            readOnly={readOnly}
+            // disabled={isEditing}
           />
           <SignatureBox
             label="Customer Signature"
             value={clientSignature}
             onChange={setClientSignature}
-            disabled={isEditing}
+            readOnly={readOnly}
+            // disabled={isEditing}
           />
 
-          <FormDatePicker label="Completion Date" value={completionDate} onChange={setCompletionDate} />
+          <FormDatePicker label="Completion Date" value={completionDate} onChange={setCompletionDate} readOnly={readOnly}/>
         </Card>
 
         {/* Chargeable radio */}
         <Card elevation={1} style={styles.section}>
           <View style={styles.radioGroup}>
-            <Pressable style={styles.radioOption} onPress={() => setIsChargeable(true)}>
+            <Pressable style={styles.radioOption} onPress={() => setIsChargeable(true)} disabled={readOnly}>
               <View style={[styles.radioCircle, { borderColor: colors.inputBorder }]}>{isChargeable === true ? <View style={[styles.radioSelected, { backgroundColor: colors.primary }]} /> : null}</View>
               <ThemedText type="body">Chargeable</ThemedText>
             </Pressable>
-            <Pressable style={styles.radioOption} onPress={() => setIsChargeable(false)}>
+            <Pressable style={styles.radioOption} onPress={() => setIsChargeable(false)} disabled={readOnly}>
               <View style={[styles.radioCircle, { borderColor: colors.inputBorder }]}>{isChargeable === false ? <View style={[styles.radioSelected, { backgroundColor: colors.primary }]} /> : null}</View>
               <ThemedText type="body">Not Chargeable</ThemedText>
             </Pressable>
@@ -1148,30 +1195,32 @@ export default function ServiceReportFormScreen() {
         </Card>
 
         {/* Buttons */}
-        <View style={[styles.buttonContainer, { paddingBottom: insets.bottom + 100 }]}>
-          <CustomButton 
-            onPress={handleSaveAsDraft}
-            disabled={
-              isSubmitted || (isPending && activeAction !== "draft")
-            }
-            style={[styles.draftButton, { backgroundColor: colors.secondary }]}>
-            {isSubmitted
-              ? "Draft Disabled"
-              : activeAction === "draft" && isPending
-                ? <CustomLoader color="#fff" />
-                : "Save as Draft"}
-          </CustomButton>
-          <CustomButton 
-            disabled={isPending && activeAction !== "submit"}
-            onPress={handleSubmit} 
-            style={[styles.submitButton, { backgroundColor: colors.primary }]}>
-              {activeAction === "submit" && isPending
-                ? <CustomLoader color="#fff" />
-                : isEditing
-                  ? "Update Report"
-                  : "Submit Report"}
-          </CustomButton>
-        </View>
+        {!readOnly && (
+          <View style={[styles.buttonContainer, { paddingBottom: insets.bottom + 100 }]}>
+            <CustomButton 
+              onPress={handleSaveAsDraft}
+              disabled={
+                isSubmitted || (isPending && activeAction !== "draft")
+              }
+              style={[styles.draftButton, { backgroundColor: colors.secondary }]}>
+              {isSubmitted
+                ? "Draft Disabled"
+                : activeAction === "draft" && isPending
+                  ? <CustomLoader color="#fff" />
+                  : "Save as Draft"}
+            </CustomButton>
+            <CustomButton 
+              disabled={isPending && activeAction !== "submit"}
+              onPress={handleSubmit} 
+              style={[styles.submitButton, { backgroundColor: colors.primary }]}>
+                {activeAction === "submit" && isPending
+                  ? <CustomLoader color="#fff" />
+                  : isEditing
+                    ? "Update Report"
+                    : "Submit Report"}
+            </CustomButton>
+          </View>
+        )}
       </KeyboardAwareScrollViewCompat>
     </ThemedView>
   );

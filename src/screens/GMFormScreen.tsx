@@ -70,6 +70,8 @@ export default function MaintenanceFormScreen() {
   const userId = useSelector((state: RootState) => state.auth.user?.user_id);
   
   const existingReport = route.params?.report || null;
+  const readOnly = route.params?.readOnly ?? false;
+
 
   const formData = React.useMemo(
     () => (existingReport ? mapRawGM(existingReport) : null),
@@ -149,9 +151,7 @@ export default function MaintenanceFormScreen() {
     isSuccess: isSuccessVerify
   } = useVerifyOTPSR();
 
-  const { mutateAsync, isPending } = useStoreGM(token);
-  console.log('error',error);
-  
+  const { mutateAsync, isPending } = useStoreGM(token);  
 
   useEffect(() => {
     if (isError && error) {
@@ -283,7 +283,7 @@ export default function MaintenanceFormScreen() {
   
   useEffect(() => {
     navigation.setOptions({
-      headerTitle: isEditing ? "Edit Maintenance" : "New Maintenance",
+      headerTitle: readOnly ? "Past GM" : isEditing ? "Edit Maintenance" : "New New Maintenance",
     });
   }, [isEditing, navigation]);
 
@@ -519,11 +519,11 @@ export default function MaintenanceFormScreen() {
         is_pending: action === "draft" ? "Y" : "N",
       });
 
-      console.log("=== FORMDATA START ===");
-      for (const pair of formData.entries()) {
-        console.log(pair[0], pair[1]);
-      }
-      console.log("=== FORMDATA END ===");
+      // console.log("=== FORMDATA START ===");
+      // for (const pair of formData.entries()) {
+      //   console.log(pair[0], pair[1]);
+      // }
+      // console.log("=== FORMDATA END ===");
       
       const res = await mutateAsync({ formData});
       
@@ -561,19 +561,34 @@ export default function MaintenanceFormScreen() {
             options={companyOptions}
             selectedValue={companyId}
             onValueChange={setCompanyId}
+            readOnly={readOnly}
           />
 
-          <FormInput label="Address" placeholder="Enter address" value={address} onChangeText={setAddress} multiline />
-          <FormInput label="Contact Person" placeholder="Enter contact person" value={contactPerson} onChangeText={setContactPerson} />
-          <FormInput label="Contact No" placeholder="Enter contact number" value={contactNo} onChangeText={setContactNo} keyboardType="phone-pad" />
-          <FormInput label="Email" placeholder="Enter email" value={email} onChangeText={setEmail} />
+          <FormInput label="Address" placeholder="Enter address" value={address} onChangeText={setAddress} multiline editable={!readOnly}
+            selectTextOnFocus={!readOnly}
+            readOnly={readOnly}/>
+          <FormInput label="Contact Person" placeholder="Enter contact person" value={contactPerson} onChangeText={setContactPerson} editable={!readOnly}
+            selectTextOnFocus={!readOnly}
+            readOnly={readOnly}/>
+          <FormInput label="Contact No" placeholder="Enter contact number" value={contactNo} onChangeText={setContactNo} keyboardType="phone-pad" editable={!readOnly}
+            selectTextOnFocus={!readOnly}
+            readOnly={readOnly}/>
+          <FormInput label="Email" placeholder="Enter email" value={email} onChangeText={setEmail} editable={!readOnly}
+            selectTextOnFocus={!readOnly}
+            readOnly={readOnly}/>
         </Card>
 
         <Card elevation={1} style={styles.section}>
           <ThemedText type="h4" style={styles.sectionTitle}>Equipment Details</ThemedText>
-          <FormInput label="M/C or Serial No *" placeholder="Enter serial number" value={mcSerialNo} onChangeText={setMcSerialNo} />
-          <FormInput label="Hour Meter" placeholder="Enter hour meter reading" value={hourMeter} onChangeText={setHourMeter} keyboardType="numeric" />
-          <FormInput label="Job No" placeholder="Enter job number" value={jobNo} onChangeText={setJobNo} />
+          <FormInput label="M/C or Serial No *" placeholder="Enter serial number" value={mcSerialNo} onChangeText={setMcSerialNo} editable={!readOnly}
+            selectTextOnFocus={!readOnly}
+            readOnly={readOnly}/>
+          <FormInput label="Hour Meter" placeholder="Enter hour meter reading" value={hourMeter} onChangeText={setHourMeter} keyboardType="numeric" editable={!readOnly}
+            selectTextOnFocus={!readOnly}
+            readOnly={readOnly}/>
+          <FormInput label="Job No" placeholder="Enter job number" value={jobNo} onChangeText={setJobNo} editable={!readOnly}
+            selectTextOnFocus={!readOnly}
+            readOnly={readOnly}/>
           
           {/* Equipment Type */}
           <FormDropdown
@@ -585,6 +600,7 @@ export default function MaintenanceFormScreen() {
               setEquipmentTypeId(v);
               setEquipmentId("");
             }}
+            readOnly={readOnly}
           />
           {/*Equipment ID */}
           <FormDropdown
@@ -593,10 +609,15 @@ export default function MaintenanceFormScreen() {
             options={equipmentOptions} // { id, name }
             selectedValue={equipmentId}
             onValueChange={(id) => setEquipmentId(id)}
+            readOnly={readOnly}
           />
 
-          <FormInput label="Client Name" placeholder="Enter client name" value={clientName} onChangeText={setClientName} />
-          <FormInput label="Client Contact No" placeholder="Enter client contact" value={clientContactNo} onChangeText={setClientContactNo} keyboardType="phone-pad" />
+          <FormInput label="Client Name" placeholder="Enter client name" value={clientName} onChangeText={setClientName} editable={!readOnly}
+            selectTextOnFocus={!readOnly}
+            readOnly={readOnly}/>
+          <FormInput label="Client Contact No" placeholder="Enter client contact" value={clientContactNo} onChangeText={setClientContactNo} keyboardType="phone-pad" editable={!readOnly}
+            selectTextOnFocus={!readOnly}
+            readOnly={readOnly}/>
            {/* OTP Section */}
            {
             isEditing ? 
@@ -642,14 +663,16 @@ export default function MaintenanceFormScreen() {
 
         <Card elevation={1} style={styles.section}>
           <ThemedText type="h4" style={styles.sectionTitle}>Service Details</ThemedText>
-          <FormInput label="Service Technician Name" placeholder="Enter technician name" value={serviceTechnicianName} onChangeText={setServiceTechnicianName} />
+          <FormInput label="Service Technician Name" placeholder="Enter technician name" value={serviceTechnicianName} onChangeText={setServiceTechnicianName} editable={!readOnly}
+            selectTextOnFocus={!readOnly}
+            readOnly={readOnly}/>
           
           <ThemedText type="small" style={styles.label}>Service Times</ThemedText>
          
           {serviceTimes.map((time, index) => (
             <View key={index}  style={[styles.serviceTimeCard, { borderColor: colors.inputBorder }]}>
               {/* Delete button */}
-              {serviceTimes.length > 1 && (
+              {!readOnly && serviceTimes.length > 1 && (
                 <Pressable
                   style={styles.deleteButton}
                   onPress={() => removeServiceTime(index)}
@@ -663,13 +686,16 @@ export default function MaintenanceFormScreen() {
                 label="Date"
                 value={time.date}
                 onChange={(v) => updateServiceTime(index, "date", v)}
+                readOnly={readOnly}
               />
 
               {/* Start & End times in row */}
               <View style={styles.timeRow}>
                  {/* START TIME */}
                   <View style={styles.serviceTimeField}>
-                    <Pressable onPress={() => setActiveStartPickerIndex(index)}>
+                    <Pressable disabled={readOnly}
+                      onPress={() => setActiveStartPickerIndex(index)}
+                      style={readOnly && { opacity: 0.8 }}>
                       <FormInput
                         label="Start"
                         placeholder="HH:MM"
@@ -679,7 +705,7 @@ export default function MaintenanceFormScreen() {
                       />
                     </Pressable>
 
-                    {activeStartPickerIndex === index && (
+                    {activeStartPickerIndex === index && !readOnly &&(
                       <DateTimePicker
                         value={new Date()}
                         mode="time"
@@ -701,7 +727,9 @@ export default function MaintenanceFormScreen() {
                   </View>
                   {/* END TIME */}
                   <View style={styles.serviceTimeField}>
-                    <Pressable onPress={() => setActiveEndPickerIndex(index)}>
+                    <Pressable disabled={readOnly}
+                      onPress={() => setActiveEndPickerIndex(index)}
+                      style={readOnly && { opacity: 0.6 }}>
                       <FormInput
                         label="End"
                         placeholder="HH:MM"
@@ -711,7 +739,7 @@ export default function MaintenanceFormScreen() {
                       />
                     </Pressable>
 
-                    {activeEndPickerIndex === index && (
+                    {activeEndPickerIndex === index && !readOnly &&(
                       <DateTimePicker
                         value={new Date()}
                         mode="time"
@@ -741,17 +769,9 @@ export default function MaintenanceFormScreen() {
                     )}
                   </View>
               </View>
-              {/* <View style={styles.timeRow}>
-                <View style={styles.serviceTimeField}>
-                  <FormInput label="Start" placeholder="HH:MM" value={time.startTime} onChangeText={(v) => updateServiceTime(index, "startTime", v)} />
-                </View>
-                <View style={styles.serviceTimeField}>
-                  <FormInput label="End" placeholder="HH:MM" value={time.endTime} onChangeText={(v) => updateServiceTime(index, "endTime", v)} />
-                </View>
-              </View> */}
             </View>
           ))}
-          {serviceTimes.length < 4 && (
+          {serviceTimes.length < 4 && !readOnly && (
             <Pressable style={[styles.addButton, { borderColor: colors.primary }]} onPress={addServiceTime}>
               <Feather name="plus" size={16} color={colors.primary} />
               <ThemedText type="small" style={{ color: colors.primary, marginLeft: Spacing.xs }}>Add Service Time</ThemedText>
@@ -767,6 +787,7 @@ export default function MaintenanceFormScreen() {
                 onChange={(val) =>
                   setServices(prev => ({ ...prev, weeklyChecking: val }))
                 }
+                readOnly={readOnly}
               />
             </View>
 
@@ -777,6 +798,7 @@ export default function MaintenanceFormScreen() {
                 onChange={(val) =>
                   setServices(prev => ({ ...prev, monthlyServicing: val }))
                 }
+                readOnly={readOnly}
               />
             </View>
 
@@ -787,6 +809,7 @@ export default function MaintenanceFormScreen() {
                 onChange={(val) =>
                   setServices(prev => ({ ...prev, halfYearlyServicing: val }))
                 }
+                readOnly={readOnly}
               />
             </View>
 
@@ -797,6 +820,7 @@ export default function MaintenanceFormScreen() {
                 onChange={(val) =>
                   setServices(prev => ({ ...prev, yearlyServicing: val }))
                 }
+                readOnly={readOnly}
               />
             </View>
 
@@ -807,6 +831,7 @@ export default function MaintenanceFormScreen() {
                 onChange={(val) =>
                   setServices(prev => ({ ...prev, washing: val }))
                 }
+                readOnly={readOnly}
               />
             </View>
 
@@ -817,6 +842,7 @@ export default function MaintenanceFormScreen() {
                 onChange={(val) =>
                   setServices(prev => ({ ...prev, cleaning: val }))
                 }
+                readOnly={readOnly}
               />
             </View>
           </View>
@@ -824,13 +850,26 @@ export default function MaintenanceFormScreen() {
 
         <Card elevation={1} style={styles.section}>
           <ThemedText type="h4" style={styles.sectionTitle}>Remarks</ThemedText>
-          <FormInput label="Remarks/Description" placeholder="Enter any remarks or description" value={remarks} onChangeText={setRemarks} multiline numberOfLines={4} style={{ height: 100, textAlignVertical: "top" }} />
+          <FormInput label="Remarks/Description" placeholder="Enter any remarks or description" value={remarks} onChangeText={setRemarks} multiline numberOfLines={4} style={{ height: 100, textAlignVertical: "top" }} editable={!readOnly}
+            selectTextOnFocus={!readOnly}
+            readOnly={readOnly}/>
         </Card>
 
         <Card elevation={1} style={styles.section}>
           <View style={styles.sectionHeader}>
             <ThemedText type="h4" style={styles.sectionTitle}>Operation Checklist</ThemedText>
-            <Pressable style={[styles.selectAllButton, { backgroundColor: colors.primary + "15" }]} onPress={handleSelectAllChecklist}>
+            <Pressable 
+              style={[
+                styles.selectAllButton,
+                {
+                  backgroundColor: readOnly
+                    ? colors.inputBorder
+                    : colors.primary + "15",
+                  opacity: readOnly ? 0.6 : 1,
+                },
+              ]}
+              disabled={readOnly}
+              onPress={handleSelectAllChecklist}>
               <Feather name={isAllChecklistSelected ? "check-square" : "square"} size={16} color={colors.primary} />
               <ThemedText type="small" style={{ color: colors.primary, marginLeft: Spacing.xs }}>
                 {isAllChecklistSelected ? "Deselect All" : "Select All"}
@@ -850,6 +889,7 @@ export default function MaintenanceFormScreen() {
                     label={`${index + 1}. ${item.replace(/_/g, " ")}`}
                     checked={checklist[item] || false}
                     onChange={(checked) => handleChecklistChange(item, checked)}
+                    readOnly={readOnly}
                   />
                 ))}
               </View>
@@ -861,46 +901,47 @@ export default function MaintenanceFormScreen() {
           <ThemedText type="h4" style={styles.sectionTitle}>Parts & Lubricants Supplied:</ThemedText>
           <View style={styles.twoColumn}>
             <View style={styles.inputHalf}>
-              <FormInput label="Engine Air Filter" placeholder="Enter details" value={partsLubricants.engineAirFilter} onChangeText={(v) => updatePartsLubricants("engineAirFilter", v)} />
+              <FormInput label="Engine Air Filter" placeholder="Enter details" value={partsLubricants.engineAirFilter} onChangeText={(v) => updatePartsLubricants("engineAirFilter", v)} editable={!readOnly} selectTextOnFocus={!readOnly} readOnly={readOnly}/>
             </View>
             <View style={styles.inputHalf}>
-              <FormInput label="Engine Oil Filter" placeholder="Enter details" value={partsLubricants.engineOilFilter} onChangeText={(v) => updatePartsLubricants("engineOilFilter", v)} />
+              <FormInput label="Engine Oil Filter" placeholder="Enter details" value={partsLubricants.engineOilFilter} onChangeText={(v) => updatePartsLubricants("engineOilFilter", v)} editable={!readOnly} selectTextOnFocus={!readOnly} readOnly={readOnly}/>
             </View>
             <View style={styles.inputHalf}>
-              <FormInput label="Engine Fuel Filter" placeholder="Enter details" value={partsLubricants.engineFuelFilter} onChangeText={(v) => updatePartsLubricants("engineFuelFilter", v)} />
+              <FormInput label="Engine Fuel Filter" placeholder="Enter details" value={partsLubricants.engineFuelFilter} onChangeText={(v) => updatePartsLubricants("engineFuelFilter", v)} editable={!readOnly} selectTextOnFocus={!readOnly} readOnly={readOnly}/>
             </View>
             <View style={styles.inputHalf}>
-              <FormInput label="Pre-Filter" placeholder="Enter details" value={partsLubricants.preFilter} onChangeText={(v) => updatePartsLubricants("preFilter", v)} />
+              <FormInput label="Pre-Filter" placeholder="Enter details" value={partsLubricants.preFilter} onChangeText={(v) => updatePartsLubricants("preFilter", v)} editable={!readOnly} selectTextOnFocus={!readOnly} readOnly={readOnly}/>
             </View>
             <View style={styles.inputHalf}>
-              <FormInput label="Water Filter" placeholder="Enter details" value={partsLubricants.waterFilter} onChangeText={(v) => updatePartsLubricants("waterFilter", v)} />
+              <FormInput label="Water Filter" placeholder="Enter details" value={partsLubricants.waterFilter} onChangeText={(v) => updatePartsLubricants("waterFilter", v)} editable={!readOnly} selectTextOnFocus={!readOnly} readOnly={readOnly}/>
             </View>
             <View style={styles.inputHalf}>
-              <FormInput label="Hydraulic Filter" placeholder="Enter details" value={partsLubricants.hydraulicFilter} onChangeText={(v) => updatePartsLubricants("hydraulicFilter", v)} />
+              <FormInput label="Hydraulic Filter" placeholder="Enter details" value={partsLubricants.hydraulicFilter} onChangeText={(v) => updatePartsLubricants("hydraulicFilter", v)} editable={!readOnly} selectTextOnFocus={!readOnly} readOnly={readOnly}/>
             </View>
             <View style={styles.inputHalf}>
-              <FormInput label="Engine Oil" placeholder="Enter details" value={partsLubricants.engineOil} onChangeText={(v) => updatePartsLubricants("engineOil", v)} />
+              <FormInput label="Engine Oil" placeholder="Enter details" value={partsLubricants.engineOil} onChangeText={(v) => updatePartsLubricants("engineOil", v)} editable={!readOnly} selectTextOnFocus={!readOnly} readOnly={readOnly}/>
             </View>
             <View style={styles.inputHalf}>
-              <FormInput label="Hydraulic Oil" placeholder="Enter details" value={partsLubricants.hydraulicOil} onChangeText={(v) => updatePartsLubricants("hydraulicOil", v)} />
+              <FormInput label="Hydraulic Oil" placeholder="Enter details" value={partsLubricants.hydraulicOil} onChangeText={(v) => updatePartsLubricants("hydraulicOil", v)} editable={!readOnly} selectTextOnFocus={!readOnly} readOnly={readOnly}/>
             </View>
             <View style={styles.inputHalf}>
-              <FormInput label="Gear Oil" placeholder="Enter details" value={partsLubricants.gearOil} onChangeText={(v) => updatePartsLubricants("gearOil", v)} />
+              <FormInput label="Gear Oil" placeholder="Enter details" value={partsLubricants.gearOil} onChangeText={(v) => updatePartsLubricants("gearOil", v)} editable={!readOnly} selectTextOnFocus={!readOnly} readOnly={readOnly}/>
             </View>
           </View>
-          <FormInput label="Other Parts Supplied" placeholder="Enter other parts and details" value={otherPart} onChangeText={setOtherPart} />
+          <FormInput label="Other Parts Supplied" placeholder="Enter other parts and details" value={otherPart} onChangeText={setOtherPart} editable={!readOnly} selectTextOnFocus={!readOnly} readOnly={readOnly}/>
         </Card>
 
         <Card elevation={1} style={styles.section}>
           <ThemedText type="h4" style={styles.sectionTitle}>Signatures & Completion</ThemedText>
-          <SignatureBox label="Service Technician Signature" value={technicianSignature} onChange={setTechnicianSignature} />
-          <SignatureBox label="KSS Supervisor Signature" value={supervisorSignature} onChange={setSupervisorSignature} />
-          <FormInput label="Service Department" placeholder="Enter department" value={serviceDepartment} onChangeText={setServiceDepartment} />
-          <FormDatePicker label="Completion Date" value={completionDate} onChange={setCompletionDate} />
+          <SignatureBox label="Service Technician Signature" value={technicianSignature} onChange={setTechnicianSignature} readOnly={readOnly}/>
+          <SignatureBox label="KSS Supervisor Signature" value={supervisorSignature} onChange={setSupervisorSignature} readOnly={readOnly}/>
+          <FormInput label="Service Department" placeholder="Enter department" value={serviceDepartment} onChangeText={setServiceDepartment} editable={!readOnly} selectTextOnFocus={!readOnly} readOnly={readOnly}/>
+          <FormDatePicker label="Completion Date" value={completionDate} onChange={setCompletionDate} readOnly={readOnly}/>
         </Card>
 
+        {!readOnly && (
         <View style={[styles.buttonContainer, { paddingBottom: insets.bottom + 100 }]}>
-        <CustomButton 
+          <CustomButton 
             onPress={() => handleFormSubmit("draft")}
             disabled={
               isSubmitted || (isPending && activeAction !== "draft")
@@ -923,6 +964,7 @@ export default function MaintenanceFormScreen() {
                   : "Submit"}
           </CustomButton>
         </View>
+        )}
       </KeyboardAwareScrollViewCompat>
     </ThemedView>
   );

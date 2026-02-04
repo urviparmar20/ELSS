@@ -18,6 +18,7 @@ interface FormDropdownProps {
   selectedValue: string;
   onValueChange: (value: string) => void;
   error?: string;
+  readOnly?: boolean;
 }
 
 export function FormDropdown({
@@ -27,6 +28,7 @@ export function FormDropdown({
   selectedValue,
   onValueChange,
   error,
+  readOnly = false,
 }: FormDropdownProps) {
   const { theme } = useTheme();
   const colors = Colors.light;
@@ -44,11 +46,18 @@ export function FormDropdown({
         style={[
           styles.dropdown,
           {
-            backgroundColor: colors.inputBackground,
+            backgroundColor: readOnly
+              ? colors.backgroundSecondary
+              : colors.inputBackground,
             borderColor: error ? colors.error : colors.inputBorder,
+            opacity: readOnly ? 0.6 : 1,
           },
         ]}
-        onPress={() => setIsOpen(true)}
+        onPress={() => {
+          if (!readOnly) {
+            setIsOpen(true);
+          }
+        }}
       >
         <ThemedText
           type="body"
@@ -59,7 +68,9 @@ export function FormDropdown({
         >
           {selectedOption?.name || placeholder}
         </ThemedText>
-        <Feather name="chevron-down" size={20} color={colors.textSecondary} />
+        {!readOnly && (
+          <Feather name="chevron-down" size={20} color={colors.textSecondary} />
+        )}
       </Pressable>
       {error ? (
         <ThemedText type="small" style={[styles.error, { color: colors.error }]}>
@@ -70,7 +81,10 @@ export function FormDropdown({
       <Modal visible={isOpen} animationType="slide" transparent>
         <Pressable 
           style={styles.modalOverlay}
-          onPress={() => setIsOpen(false)}
+          onPress={() => {
+            if (readOnly) return;
+            setIsOpen(false);
+          }}
         >
           <Pressable 
             style={[

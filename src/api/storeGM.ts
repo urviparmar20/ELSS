@@ -20,7 +20,6 @@ export const storeGMApi = async ({
 
   if (!response.ok) {
     const text = await response.text();
-    console.log('response',response);
     
     throw new Error(`HTTP ${response.status}: ${text}`);
   }

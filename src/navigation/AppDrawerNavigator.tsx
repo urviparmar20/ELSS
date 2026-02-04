@@ -1,17 +1,20 @@
 import React from "react";
 import { createDrawerNavigator } from "@react-navigation/drawer";
 import MainTabNavigator from "./MainTabNavigator";
-import ProfileScreen from "../screens/ProfileScreen";
-import PastGMListScreen from "../screens/PastGmListScreen";
-import PastSRListScreen from "../screens/PastSRListScreen";
+import ReportsStackNavigator from "./ReportsStackNavigator";
+import { NavigatorScreenParams } from "@react-navigation/native";
+import type { ReportsStackParamList } from "./ReportsStackNavigator";
+import MaintenanceStackNavigator from "./MaintenanceStackNavigator";
+import type { MaintenanceStackParamList } from "./MaintenanceStackNavigator";
+
 
 export type AppDrawerParamList = {
   Home: undefined;
   Profile: undefined;
   PastDO: undefined;
   PastRR: undefined;
-  PastSR: undefined;
-  PastGM: undefined;
+  PastSR: NavigatorScreenParams<ReportsStackParamList>;
+  PastGM: NavigatorScreenParams<MaintenanceStackParamList>;
   PastOnOffHire: undefined;
   SavedJobs: undefined;
   Chats: undefined;
@@ -51,13 +54,30 @@ export default function AppDrawerNavigator() {
       />*/}
       <Drawer.Screen
         name="PastSR"
-        component={PastSRListScreen}
-        options={{ title: "Past SR" }}
+        component={ReportsStackNavigator}
+        options={{
+          title: "Past SR",
+          headerShown: false,
+        }}
+        initialParams={{
+          screen: "PastSRList",
+        }}
       />
-      <Drawer.Screen
+      {/* <Drawer.Screen
         name="PastGM"
         component={PastGMListScreen}
         options={{ title: "Past GM" }}
+      /> */}
+      <Drawer.Screen
+        name="PastGM"
+        component={MaintenanceStackNavigator}
+        options={{
+          title: "Past GM",
+          headerShown: false,
+        }}
+        initialParams={{
+          screen: "PastGMList",
+        }}
       />
       {/* <Drawer.Screen
         name="PastOnOffHire"
