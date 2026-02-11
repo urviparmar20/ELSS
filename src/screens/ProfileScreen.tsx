@@ -157,22 +157,6 @@ export default function ProfileScreen() {
             Settings
           </ThemedText>
 
-          <Card
-            elevation={1}
-            style={styles.menuItem}
-            // onPress={() => navigation.navigate("EditProfile")}
-          >
-            <View style={styles.menuItemContent}>
-              <View
-                style={[styles.menuIcon, { backgroundColor: colors.primary + "20" }]}
-              >
-                <Feather name="edit-2" size={20} color={colors.primary} />
-              </View>
-              <ThemedText type="body">Edit Profile</ThemedText>
-            </View>
-            <Feather name="chevron-right" size={20} color={colors.textSecondary} />
-          </Card>
-
           {/* <Card
             elevation={1}
             style={styles.menuItem}

@@ -58,13 +58,16 @@ export function SignatureBox({ label, value, onChange, readOnly = false,
     return path;
   }, []);
 
-  const drawingDisabled = readOnly || !!imageUri;
+  const drawingDisabled = readOnly;
 
   /* ---------------- Pan Responder ---------------- */
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => !drawingDisabled,
       onMoveShouldSetPanResponder: () => !drawingDisabled,
+
+      onPanResponderTerminationRequest: () => false,
+      onShouldBlockNativeResponder: () => true,   
 
       onPanResponderGrant: (event) => {
         if (drawingDisabled) return;
@@ -94,25 +97,42 @@ export function SignatureBox({ label, value, onChange, readOnly = false,
   ).current;
 
   /* ---------------- Generate PNG after drawing ---------------- */
-  useEffect(() => {
-    const generateImage = async () => {
-      if (!viewRef.current || paths.length === 0) return;
+  // useEffect(() => {
+  //   const generateImage = async () => {
+  //     if (!viewRef.current || paths.length === 0) return;
 
-      try {
-        const uri = await captureRef(viewRef, {
-          format: "png",
-          quality: 1,
-        });
+  //     try {
+  //       const uri = await captureRef(viewRef, {
+  //         format: "png",
+  //         quality: 1,
+  //       });
 
-        setImageUri(uri);
-        onChangeRef.current(uri);
-      } catch (e) {
-        console.error("Signature capture failed", e);
-      }
-    };
+  //       setImageUri(uri);
+  //       onChangeRef.current(uri);
+  //     } catch (e) {
+  //       console.error("Signature capture failed", e);
+  //     }
+  //   };
 
-    generateImage();
-  }, [paths]);
+  //   generateImage();
+  // }, [paths]);
+
+  const handleDone = async () => {
+    if (!viewRef.current || paths.length === 0) return;
+  
+    try {
+      const uri = await captureRef(viewRef.current, {
+        format: "png",
+        quality: 1,
+      });
+  
+      setImageUri(uri);
+      onChangeRef.current(uri);
+    } catch (e) {
+      console.error("Signature capture failed", e);
+    }
+  };
+  
 
   /* ---------------- Clear ---------------- */
   const handleClear = useCallback(() => {
@@ -205,6 +225,13 @@ export function SignatureBox({ label, value, onChange, readOnly = false,
           </View>
         )}
       </View>
+      {!readOnly && paths.length > 0 && !imageUri && (
+        <Pressable style={styles.fabDone} onPress={handleDone}>
+          <Feather name="check" size={18} color="#fff" />
+        </Pressable>
+      )}
+
+
     </View>
   );
 }
@@ -231,7 +258,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.sm,
   },
   signatureArea: {
-    height: 150,
+    height: 250,
     borderWidth: 1,
     borderRadius: BorderRadius.sm,
     overflow: "hidden",
@@ -249,14 +276,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     pointerEvents: "none",
   },
-  lockOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(255,255,255,0.6)",
+  fabDone: {
+    position: "absolute",
+    bottom: 12,
+    right: 12,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.light.primary,
     alignItems: "center",
     justifyContent: "center",
-  },
-  lockText: {
-    fontSize: 12,
-    color: "#666",
-  },
+    elevation: 4,
+    pointerEvents: "auto",
+  }
 });
