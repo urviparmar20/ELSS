@@ -5,6 +5,14 @@ export type RNFile = {
   type: string;
 };
 
+export type ChecklistItemProps = {
+  item: string;
+  index: number;
+  checked: boolean;
+  onChange: () => void;
+  readOnly?: boolean;
+}
+
 
 export interface GMStoreParams {
   token: string;
@@ -21,7 +29,7 @@ export interface GMStoreParams {
   serial_no: string;
   mc: string;
   remarks: string;
-  services: string[];
+  services?: string[];
   technician: string;
   client_name: string;
   client_tel_no: string;
@@ -38,9 +46,11 @@ export interface GMStoreParams {
   signature_supervisor?: RNFile;
   service_department: string;
   current_date: string,
-  operation_check_list: Record<string, boolean>,
+  operation_check_list?: Record<string, boolean>,
+  checklist?: any[];
   is_otp_verified: string,
-  is_pending: string
+  is_pending: string,
+  frequency: string | undefined
 }
 
 export interface ServiceTime {
@@ -78,12 +88,12 @@ export type ValidateFormParams = {
   clientName: string;
   clientContactNo: string;
   serviceTimes: ServiceTime[];
-  checklist: Record<string, boolean>;
+  // checklist: Record<string, boolean>;
   remarks: string;
   technicianSignature: string;
   supervisorSignature: string;
   serviceDepartment: string;
-  services: string[];
+  // services: string[];
 };
 
 export type ValidationResult = {
@@ -128,5 +138,7 @@ export interface MaintenanceRecord {
   isChargeable: boolean | null;
   current_date: string;
   is_pending: "Y" | "N";
-
+  frequency: string;
+  gm_id: string;
+  checklist_version: number;
 }

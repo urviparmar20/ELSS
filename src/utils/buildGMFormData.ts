@@ -18,9 +18,15 @@ export const buildGMFormData = (
   formData.append("mc", params.mc);
   formData.append("serial_no", params.serial_no);
   formData.append("remarks", params.remarks);
-  params.services.forEach((service, index) => {
-    formData.append(`services[${index}]`, service);
-  });
+  // params.services.forEach((service, index) => {
+  //   formData.append(`services[${index}]`, service);
+  // });
+
+  if (params.services?.length > 0) {
+    params.services.forEach((service, index) => {
+      formData.append(`services[${index}]`, service);
+    });
+  }
   formData.append("technician", params.technician);
   formData.append("client_name", params.client_name);
   formData.append("client_tel_no", params.client_tel_no);
@@ -66,12 +72,44 @@ export const buildGMFormData = (
   formData.append("current_date", params.current_date);
   formData.append("is_pending", params.is_pending);
   
-  formData.append(
-    "operation_check_list[]",
-    JSON.stringify(params.operation_check_list)
-  );
+  // formData.append(
+  //   "operation_check_list[]",
+  //   JSON.stringify(params.operation_check_list)
+  // );
+  if (
+    params.operation_check_list &&
+    Object.keys(params.operation_check_list).length > 0
+  ) {
+    formData.append(
+      "operation_check_list[]",
+      JSON.stringify(params.operation_check_list)
+    );
+  }
+  
+  if (params.checklist && Array.isArray(params.checklist)) {
+    params.checklist.forEach((item, index) => {
+      formData.append(
+        `checklist[${index}][activity_id]`,
+        String(item.activity_id)
+      );
+  
+      formData.append(
+        `checklist[${index}][status]`,
+        String(item.status)
+      );
+  
+      formData.append(
+        `checklist[${index}][remark]`,
+        item.remark || ""
+      );
+    });
+  }
+  
 
   formData.append("is_otp_verified", params.is_otp_verified);
+  params.frequency &&
+  formData.append("frequency", params.frequency);
+
 
   return formData;
 };

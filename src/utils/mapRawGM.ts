@@ -1,6 +1,8 @@
 export function mapRawGM(raw: any) {
   if (!raw) return null;
 
+  // console.log('raw',raw);
+  
   return {
     // ---------- BASIC INFO ----------
     companyId: null,
@@ -21,10 +23,15 @@ export function mapRawGM(raw: any) {
     clientContactNo: raw.client_tel_no || "",
     signature_supervisor: raw.signature_supervisor || "",
     signature_technician: raw.signature_technician || "",
-    checklist: flattenChecklist(raw.operation_check_list),
+    checklist: flattenChecklist(raw.operation_check_list) || "",
+    frequency: raw.frequency || "",
+    v2_checklist_data: raw.v2_checklist_data || [],
 
     serviceTechnicianName: raw.technician || "",
     services: raw.services || "",
+    checklist_version: raw.checklist_version || "",
+    gm_id: raw.gm_id || "",
+    
 
     // ---------- DATE + TIME ----------
     serviceTimes: extractServiceTimes(raw),
@@ -33,17 +40,18 @@ export function mapRawGM(raw: any) {
 
     // ---------- PARTS / LUBRICANTS ----------
     partsLubricants: {
-      engineAirFilter: raw.servicing_parts_lubricants_list?.engine_air_filter || "",
-      engineOilFilter: raw.servicing_parts_lubricants_list?.engine_oil_filter || "",
-      engineFuelFilter: raw.servicing_parts_lubricants_list?.engine_fule_filter || "",
-      preFilter: raw.servicing_parts_lubricants_list?.pre_filter || "",
-      waterFilter: raw.servicing_parts_lubricants_list?.water_filter || "",
-      hydraulicFilter: raw.servicing_parts_lubricants_list?.hydraulic_filter || "",
-      engineOil: raw.servicing_parts_lubricants_list?.engine_oil || "",
-      hydraulicOil: raw.servicing_parts_lubricants_list?.hydraulic_oil || "",
-      gearOil: raw.servicing_parts_lubricants_list?.gear_oil || "",
+      engineAirFilter: raw.servicing_parts_lubricants_list?.engine_air_filter || raw.servicing_parts_lubricants_list?.engineAirFilter || "",
+      engineOilFilter: raw.servicing_parts_lubricants_list?.engine_oil_filter || raw.servicing_parts_lubricants_list?.engineOilFilter || "",
+      engineFuelFilter: raw.servicing_parts_lubricants_list?.engine_fule_filter || raw.servicing_parts_lubricants_list?.engineFuelFilter ||  "",
+      preFilter: raw.servicing_parts_lubricants_list?.pre_filter || raw.servicing_parts_lubricants_list?.preFilter ||  "",
+      waterFilter: raw.servicing_parts_lubricants_list?.water_filter || raw.servicing_parts_lubricants_list?.waterFilter || "",
+      hydraulicFilter: raw.servicing_parts_lubricants_list?.hydraulic_filter || raw.servicing_parts_lubricants_list?.hydraulicFilter || "",
+      engineOil: raw.servicing_parts_lubricants_list?.engine_oil || raw.servicing_parts_lubricants_list?.engineOil || "",
+      hydraulicOil: raw.servicing_parts_lubricants_list?.hydraulic_oil || raw.servicing_parts_lubricants_list?.hydraulicOil || "",
+      gearOil: raw.servicing_parts_lubricants_list?.gear_oil || raw.servicing_parts_lubricants_list?.gearOil || "",
     },
     otherPartsSupplied: raw.other_parts_supplied_list || "",
+
 
 
     // ----------  DATE ----------
@@ -60,11 +68,17 @@ export function mapRawGM(raw: any) {
 }
 
 function flattenChecklist(
-  operationChecklist: Record<string, Record<string, boolean>> = {}
+  operationChecklist?: Record<string, Record<string, boolean>> | null
 ) {
+  if (!operationChecklist || typeof operationChecklist !== "object") {
+    return {};
+  }
+
   const flat: Record<string, boolean> = {};
 
-  Object.values(operationChecklist).forEach(category => {
+  Object.values(operationChecklist).forEach((category) => {
+    if (!category || typeof category !== "object") return;
+
     Object.entries(category).forEach(([key, value]) => {
       flat[key] = Boolean(value);
     });
@@ -86,15 +100,6 @@ function parseBackendDate(dateStr: string) {
   }
 
   return "";
-}
-
-
-
-/* ---------------------------------------------------
-   Helper: Convert backend booleans
---------------------------------------------------- */
-function parseBool(val: any) {
-  return val === true || val === "true" || val === 1 || val === "1" || val === "Y";
 }
 
 /* ---------------------------------------------------

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { View, StyleSheet, Pressable, Platform } from "react-native";
+import React, { useState, useEffect, useMemo, useRef } from "react";
+import { View, StyleSheet, Pressable, Platform, FlatList } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQueryClient } from "@tanstack/react-query";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -20,6 +20,7 @@ import { ServiceTime, PartsLubricants } from "../types/maintenance";
 import { Colors, Spacing, BorderRadius } from "../constants/theme";
 import { Feather } from "@expo/vector-icons";
 import type { MaintenanceStackParamList } from "../navigation/MaintenanceStackNavigator";
+import type { ChecklistItemProps } from "../types/maintenance";
 import { useCompanies } from '../hooks/useCompanies';
 import { useEquipmentTypeList } from "../hooks/useEquipmentType";
 import { useEquipmentListByType } from "../hooks/useEquipmentListByType";
@@ -28,16 +29,18 @@ import { Toast } from "react-native-toast-message/lib/src/Toast";
 import { useGenerateOTPSR } from "../hooks/useGenerateOTPSR";
 import { useVerifyOTPSR } from "../hooks/useVerifyOTPSR";
 import CustomLoader from "../components/CustomLoader";
-import { CustomAlert } from "../components/CustomAlert";
 import { useStoreGM } from "../hooks/useStoreGM";
 import { buildGMFormData } from "../utils/buildGMFormData";
 import { validateForm } from "../utils/validateGM";
 import { mapRawGM } from "../utils/mapRawGM";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import { EQUIPMENT_TYPES } from "../constants/equipment";
+import CheckListAPKL from "../components/CheckListAPKL";
 
 
 type MaintenanceFormRouteProp = RouteProp<MaintenanceStackParamList, "GMForm">;
 type MaintenanceNavigationProp = NativeStackNavigationProp<MaintenanceStackParamList>;
+type EquipmentType = "3" | "11";
 
 const DEFAULT_PARTS_LUBRICANTS: PartsLubricants = {
   engineAirFilter: "",
@@ -71,7 +74,7 @@ export default function MaintenanceFormScreen() {
   
   const existingReport = route.params?.report || null;
   const readOnly = route.params?.readOnly ?? false;
-
+  const gmId = route.params?.gm_id;
 
   const formData = React.useMemo(
     () => (existingReport ? mapRawGM(existingReport) : null),
@@ -85,7 +88,7 @@ export default function MaintenanceFormScreen() {
   const [equipmentTypeOptions, setEquipmentTypeOptions] = useState<
   { id: string; name: string }[]>([]);
   const [equipmentOptions, setEquipmentOptions] = useState<{ id: string; name: string }[]>([]);
-
+  const [selectedServiceType, setSelectedServiceType] = useState<string | null>(null);
   const [companyId, setCompanyId] = useState(formData?.companyId || "");
   const [mcSerialNo, setMcSerialNo] = useState(formData?.mcSerialNo || "");
   const [hourMeter, setHourMeter] = useState(formData?.hourMeter || "");
@@ -105,6 +108,13 @@ export default function MaintenanceFormScreen() {
   const [clientContactNo, setClientContactNo] = useState(formData?.clientContactNo || "");
   const [serviceTechnicianName, setServiceTechnicianName] = useState(formData?.serviceTechnicianName  || "");
   const [serviceTimes, setServiceTimes] = useState<ServiceTime[]>(formData?.serviceTimes || [{ date: new Date().toISOString().split("T")[0], startTime: "09:00", endTime: "17:00" }]);
+
+  // const [finalChecklistPayload, setFinalChecklistPayload] = useState<any[]>([]);
+  const [finalChecklistPayload, setFinalChecklistPayload] = useState<any[]>(
+    formData?.v2_checklist_data || []
+  );
+  console.log('v2_checklist_data', formData?.v2_checklist_data);
+  
   const [services, setServices] = useState({
     weeklyChecking: false,
     monthlyServicing: false,
@@ -121,12 +131,11 @@ export default function MaintenanceFormScreen() {
 
   type SubmitAction = "draft" | "submit" | null;
   const [activeAction, setActiveAction] = useState<SubmitAction>(null);
-
+  const [editableChecklistData, setEditableChecklistData] = useState<any>(null);
   const [technicianSignature, setTechnicianSignature] = useState("");
   const [supervisorSignature, setSupervisorSignature] = useState("");
   const [serviceDepartment, setServiceDepartment] = useState(formData?.serviceDepartment || "");
   const [completionDate, setCompletionDate] = useState(formData?.completionDate || new Date().toISOString().split("T")[0]);
-  const [isLoading, setIsLoading] = useState(false);
   const [otp, setOtp] = useState("");
   const [showAlert, setShowAlert] = useState(false);
   const [showVerify, setShowVerify] = useState(false);
@@ -138,7 +147,7 @@ export default function MaintenanceFormScreen() {
   const { data: companyData } = useCompanies();
   const { data: eqTypeData } = useEquipmentTypeList();
   const { data: equipmentListData } = useEquipmentListByType(equipmentTypeId);
-  const { data: checklistData, isError, error, } = useGeneralChecklist(equipmentTypeId);
+  const { data: checklistData, isError, error, } = useGeneralChecklist(equipmentTypeId, selectedServiceType || undefined);
   const {
     mutate: generateOtp,
     isPending: isOtpPending,
@@ -162,6 +171,10 @@ export default function MaintenanceFormScreen() {
     }
   }, [isError, error]);
 
+  const initialFrequencyRef = useRef(
+    formData?.frequency?.toLowerCase() || null
+  );
+  
   //services
   useEffect(() => {
     if (!isEditing) return;
@@ -176,16 +189,85 @@ export default function MaintenanceFormScreen() {
       cleaning: false,
     };
   
-    formData.services.forEach((serviceLabel: string) => {
-      const key = SERVICE_REVERSE_MAP[serviceLabel];
-      if (key) {
-        updatedServices[key] = true;
-      }
-    });
+     // ensure services is an array
+    if (Array.isArray(formData?.services)) {
+      formData.services.forEach((serviceLabel: string) => {
+        const key = SERVICE_REVERSE_MAP[serviceLabel];
+
+        if (key) {
+          updatedServices[key] = true;
+        }
+      });
+    }
   
     setServices(updatedServices);
   }, [isEditing, formData]);
+
+
+  // console.log('selectedServiceType',selectedServiceType);
+  // console.log('setFinalChecklistPayload',finalChecklistPayload);
+
   
+  useEffect(() => {
+    if (!isEditing) return;
+    if (!formData?.frequency) return;
+  
+    setSelectedServiceType(
+      String(formData.frequency).toLowerCase()
+    );
+  }, [isEditing, formData]);
+  // console.log('selectedServiceType',formData.frequency);
+  
+
+  //checklistAPFL
+  // Initial checklist for edit mode
+    useEffect(() => {
+      if (!isEditing) return;
+      if (!formData?.v2_checklist_data) return;
+
+      setEditableChecklistData({
+        data: formData.v2_checklist_data,
+      });
+
+      setFinalChecklistPayload(formData.v2_checklist_data);
+    }, [isEditing, formData]);
+    
+    useEffect(() => {
+      if (!selectedServiceType) return;
+      if (!checklistData?.data) return;
+    
+      // EDIT MODE INITIAL LOAD
+      // Keep saved checklist with checked statuses
+      if (
+        isEditing &&
+        selectedServiceType === initialFrequencyRef.current &&
+        formData?.v2_checklist_data?.length
+      ) {
+        setEditableChecklistData({
+          data: formData.v2_checklist_data,
+        });
+    
+        setFinalChecklistPayload(
+          formData.v2_checklist_data
+        );
+    
+        return;
+      }
+    
+      // USER CHANGED SERVICE TYPE
+      // Load fresh checklist from API
+      setEditableChecklistData(checklistData);
+    
+      // reset answers
+      setFinalChecklistPayload([]);
+    
+    }, [
+      selectedServiceType,
+      checklistData,
+      isEditing,
+      formData,
+    ]);
+
   //Company
   useEffect(() => {
     
@@ -283,9 +365,65 @@ export default function MaintenanceFormScreen() {
   
   useEffect(() => {
     navigation.setOptions({
-      headerTitle: readOnly ? "Past GM" : isEditing ? "Edit Maintenance" : "New New Maintenance",
+      headerTitle: readOnly || isEditing ? gmId : "New Maintenance",
     });
-  }, [isEditing, navigation]);
+  }, [isEditing, navigation, gmId]);
+
+  //equipment type service type
+  const checklistOptions: Record<EquipmentType, string[]> = {
+    [EQUIPMENT_TYPES.FORKLIFT]: ["Daily", "Weekly", "Monthly", "Quarterly", "Yearly"],
+    [EQUIPMENT_TYPES.AP]: ["Weekly", "Monthly", "Quarterly", "Yearly"],
+  };
+
+  const selectedChecklist = useMemo(() => {
+    const key = String(equipmentTypeId);
+  
+    if (key in checklistOptions) {
+      return checklistOptions[key as keyof typeof checklistOptions];
+    }
+  
+    return [];
+  }, [equipmentTypeId]);
+
+  //frequency
+  useEffect(() => {
+    // don't overwrite edit value
+    if (isEditing && formData?.frequency) return;
+  
+    if (selectedChecklist.length > 0) {
+      setSelectedServiceType(
+        selectedChecklist[0].toLowerCase()
+      );
+    }
+  }, [selectedChecklist, isEditing, formData]);
+
+  const ChecklistItem = React.memo(
+    ({ item, index, checked, onChange, readOnly }: ChecklistItemProps) => {
+      return (
+        <Pressable
+          onPress={onChange}
+          disabled={readOnly}
+          style={styles.radioOption}
+        >
+          {/* Radio Circle */}
+          <View
+            style={styles.radioGroup}
+          >
+            {checked && (
+              <View
+                style={styles.radioSelected}
+              />
+            )}
+          </View>
+  
+          <ThemedText type="small">
+            {item}
+          </ThemedText>
+        </Pressable>
+      );
+    }
+  );
+  
 
 
   // Checklist change
@@ -463,9 +601,10 @@ export default function MaintenanceFormScreen() {
       supervisorSignature,
       serviceDepartment,
       contactPerson,
-      contactNo,
-      checklist,
-      services
+      contactNo, 
+
+      // checklist,
+      // services
     });
     
     if (!valid) {
@@ -479,6 +618,10 @@ export default function MaintenanceFormScreen() {
     }
     
     try {
+      const isAPOrForklift =
+      equipmentTypeId === EQUIPMENT_TYPES.AP ||
+      equipmentTypeId === EQUIPMENT_TYPES.FORKLIFT;
+
       const formData = buildGMFormData({
         maintenance_id: isEditing ? existingReport.id : 0,
         company_name: companyId,
@@ -493,7 +636,7 @@ export default function MaintenanceFormScreen() {
         serial_no: mcSerialNo,
         mc: mcSerialNo,
         remarks,
-        services: selectedServices,
+        services: selectedServices.length > 0 ? selectedServices : undefined,
         technician: String(userId),
         client_name: clientName,
         client_tel_no: clientContactNo,
@@ -514,16 +657,26 @@ export default function MaintenanceFormScreen() {
           : undefined,
         service_department: serviceDepartment,
         current_date: completionDate instanceof Date ? completionDate.toISOString() : completionDate,
-        operation_check_list: checklist,
+        // operation_check_list: Object.keys(checklist).length > 0 ? checklist : undefined,
+        checklist: isAPOrForklift
+          ? finalChecklistPayload
+          : undefined,
+
+        operation_check_list: !isAPOrForklift &&
+        Object.keys(checklist).length > 0
+          ? checklist
+          : undefined,
+
         is_otp_verified: "Y",
         is_pending: action === "draft" ? "Y" : "N",
+        frequency: selectedServiceType ? selectedServiceType : undefined
       });
 
-      // console.log("=== FORMDATA START ===");
-      // for (const pair of formData.entries()) {
-      //   console.log(pair[0], pair[1]);
-      // }
-      // console.log("=== FORMDATA END ===");
+      console.log("=== FORMDATA START ===");
+      for (const pair of formData.entries()) {
+        console.log(pair[0], pair[1]);
+      }
+      console.log("=== FORMDATA END ===");
       
       const res = await mutateAsync({ formData});
       
@@ -580,18 +733,8 @@ export default function MaintenanceFormScreen() {
 
         <Card elevation={1} style={styles.section}>
           <ThemedText type="h4" style={styles.sectionTitle}>Equipment Details</ThemedText>
-          <FormInput label="M/C or Serial No *" placeholder="Enter serial number" value={mcSerialNo} onChangeText={setMcSerialNo} editable={!readOnly}
-            selectTextOnFocus={!readOnly}
-            readOnly={readOnly}/>
-          <FormInput label="Hour Meter" placeholder="Enter hour meter reading" value={hourMeter} onChangeText={setHourMeter} keyboardType="numeric" editable={!readOnly}
-            selectTextOnFocus={!readOnly}
-            readOnly={readOnly}/>
-          <FormInput label="Job No" placeholder="Enter job number" value={jobNo} onChangeText={setJobNo} editable={!readOnly}
-            selectTextOnFocus={!readOnly}
-            readOnly={readOnly}/>
-          
-          {/* Equipment Type */}
-          <FormDropdown
+           {/* Equipment Type */}
+           <FormDropdown
             label="Equipment Type"
             placeholder="Select equipment type"
             options={equipmentTypeOptions}    
@@ -612,6 +755,17 @@ export default function MaintenanceFormScreen() {
             readOnly={readOnly}
           />
 
+          <FormInput label="M/C or Serial No *" placeholder="Enter serial number" value={mcSerialNo} onChangeText={setMcSerialNo} editable={!readOnly}
+            selectTextOnFocus={!readOnly}
+            readOnly={readOnly}/>
+          <FormInput label="Hour Meter" placeholder="Enter hour meter reading" value={hourMeter} onChangeText={setHourMeter} keyboardType="numeric" editable={!readOnly}
+            selectTextOnFocus={!readOnly}
+            readOnly={readOnly}/>
+          <FormInput label="Job No" placeholder="Enter job number" value={jobNo} onChangeText={setJobNo} editable={!readOnly}
+            selectTextOnFocus={!readOnly}
+            readOnly={readOnly}/>
+          
+         
           <FormInput label="Client Name" placeholder="Enter client name" value={clientName} onChangeText={setClientName} editable={!readOnly}
             selectTextOnFocus={!readOnly}
             readOnly={readOnly}/>
@@ -619,7 +773,7 @@ export default function MaintenanceFormScreen() {
             selectTextOnFocus={!readOnly}
             readOnly={readOnly}/>
            {/* OTP Section */}
-           {
+           {/* {
             isEditing ? 
               <ThemedText type="body" style={styles.verifiedText}>Contact Number Verified</ThemedText> : 
                 <View style={styles.twoColumn}>
@@ -658,7 +812,7 @@ export default function MaintenanceFormScreen() {
                     }             
                   </View>
                 </View>  
-           } 
+           }  */}
         </Card>
 
         <Card elevation={1} style={styles.section}>
@@ -777,75 +931,104 @@ export default function MaintenanceFormScreen() {
               <ThemedText type="small" style={{ color: colors.primary, marginLeft: Spacing.xs }}>Add Service Time</ThemedText>
             </Pressable>
           )}
-
+          {/* Equipment Type secvice*/}
           <ThemedText type="small" style={[styles.label, { marginTop: Spacing.lg }]}>Service Type</ThemedText>
-          <View style={styles.twoColumn}>
-            <View style={styles.inputHalf}>
-              <FormCheckbox
-                label="Weekly Checking"
-                checked={services.weeklyChecking}
-                onChange={(val) =>
-                  setServices(prev => ({ ...prev, weeklyChecking: val }))
-                }
-                readOnly={readOnly}
+          {     
+            (equipmentTypeId == "3" || equipmentTypeId == "11")
+            ?   
+            <View style={{ marginBottom: 10, marginTop: 10 }}> 
+              <FlatList
+                data={selectedChecklist}
+                keyExtractor={(item) => item}
+                numColumns={2}
+                columnWrapperStyle={{ justifyContent: "space-between" }}
+                renderItem={({ item, index }) => (
+                  <View style={{ flex: 1 }}>
+                    <ChecklistItem
+                      item={item}
+                      index={index}
+                      checked={selectedServiceType === item.toLowerCase()}
+                      onChange={() => setSelectedServiceType(item.toLowerCase())}
+                      readOnly={readOnly}
+                    />
+                  </View>
+                )}
               />
-            </View>
+            </View>  
+            :
+            <View>
+              
+            <View style={styles.twoColumn}>
+              <View style={styles.inputHalf}>
+                <FormCheckbox
+                  label="Weekly Checking"
+                  checked={services.weeklyChecking}
+                  onChange={(val) =>
+                    setServices(prev => ({ ...prev, weeklyChecking: val }))
+                  }
+                  readOnly={readOnly}
+                />
+              </View>
 
-            <View style={styles.inputHalf}>
-              <FormCheckbox
-                label="Monthly Servicing"
-                checked={services.monthlyServicing}
-                onChange={(val) =>
-                  setServices(prev => ({ ...prev, monthlyServicing: val }))
-                }
-                readOnly={readOnly}
-              />
-            </View>
+              <View style={styles.inputHalf}>
+                <FormCheckbox
+                  label="Monthly Servicing"
+                  checked={services.monthlyServicing}
+                  onChange={(val) =>
+                    setServices(prev => ({ ...prev, monthlyServicing: val }))
+                  }
+                  readOnly={readOnly}
+                />
+              </View>
 
-            <View style={styles.inputHalf}>
-              <FormCheckbox
-                label="Half Yearly Servicing"
-                checked={services.halfYearlyServicing}
-                onChange={(val) =>
-                  setServices(prev => ({ ...prev, halfYearlyServicing: val }))
-                }
-                readOnly={readOnly}
-              />
-            </View>
+              <View style={styles.inputHalf}>
+                <FormCheckbox
+                  label="Half Yearly Servicing"
+                  checked={services.halfYearlyServicing}
+                  onChange={(val) =>
+                    setServices(prev => ({ ...prev, halfYearlyServicing: val }))
+                  }
+                  readOnly={readOnly}
+                />
+              </View>
 
-            <View style={styles.inputHalf}>
-              <FormCheckbox
-                label="Yearly Servicing"
-                checked={services.yearlyServicing}
-                onChange={(val) =>
-                  setServices(prev => ({ ...prev, yearlyServicing: val }))
-                }
-                readOnly={readOnly}
-              />
-            </View>
+              <View style={styles.inputHalf}>
+                <FormCheckbox
+                  label="Yearly Servicing"
+                  checked={services.yearlyServicing}
+                  onChange={(val) =>
+                    setServices(prev => ({ ...prev, yearlyServicing: val }))
+                  }
+                  readOnly={readOnly}
+                />
+              </View>
 
-            <View style={styles.inputHalf}>
-              <FormCheckbox
-                label="Washing"
-                checked={services.washing}
-                onChange={(val) =>
-                  setServices(prev => ({ ...prev, washing: val }))
-                }
-                readOnly={readOnly}
-              />
-            </View>
+              <View style={styles.inputHalf}>
+                <FormCheckbox
+                  label="Washing"
+                  checked={services.washing}
+                  onChange={(val) =>
+                    setServices(prev => ({ ...prev, washing: val }))
+                  }
+                  readOnly={readOnly}
+                />
+              </View>
 
-            <View style={styles.inputHalf}>
-              <FormCheckbox
-                label="Cleaning"
-                checked={services.cleaning}
-                onChange={(val) =>
-                  setServices(prev => ({ ...prev, cleaning: val }))
-                }
-                readOnly={readOnly}
-              />
+              <View style={styles.inputHalf}>
+                <FormCheckbox
+                  label="Cleaning"
+                  checked={services.cleaning}
+                  onChange={(val) =>
+                    setServices(prev => ({ ...prev, cleaning: val }))
+                  }
+                  readOnly={readOnly}
+                />
+              </View>
             </View>
-          </View>
+            </View>   
+          }
+
+            
         </Card>
 
         <Card elevation={1} style={styles.section}>
@@ -855,47 +1038,58 @@ export default function MaintenanceFormScreen() {
             readOnly={readOnly}/>
         </Card>
 
-        <Card elevation={1} style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <ThemedText type="h4" style={styles.sectionTitle}>Operation Checklist</ThemedText>
-            <Pressable 
-              style={[
-                styles.selectAllButton,
-                {
-                  backgroundColor: readOnly
-                    ? colors.inputBorder
-                    : colors.primary + "15",
-                  opacity: readOnly ? 0.6 : 1,
-                },
-              ]}
-              disabled={readOnly}
-              onPress={handleSelectAllChecklist}>
-              <Feather name={isAllChecklistSelected ? "check-square" : "square"} size={16} color={colors.primary} />
-              <ThemedText type="small" style={{ color: colors.primary, marginLeft: Spacing.xs }}>
-                {isAllChecklistSelected ? "Deselect All" : "Select All"}
-              </ThemedText>
-            </Pressable>
-          </View>
-          {checklistData?.data && Object.entries(checklistData.data).map(([category, items]) => {
-            const itemList = items as string[];
-            return (
-              <View key={category} style={{ marginBottom: Spacing.md }}>
-                <ThemedText type="h4" style={{ marginBottom: Spacing.sm }}>
-                  {category.replace(/_/g, " ").toUpperCase()}
+        {
+          (equipmentTypeId == "3" || equipmentTypeId == "11") ?
+          (
+            <CheckListAPKL
+              checklistData={editableChecklistData || checklistData}
+              onChecklistChange={setFinalChecklistPayload}
+            />
+         
+          )
+          :
+          <Card elevation={1} style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <ThemedText type="h4" style={styles.sectionTitle}>Operation Checklist</ThemedText>
+              <Pressable 
+                style={[
+                  styles.selectAllButton,
+                  {
+                    backgroundColor: readOnly
+                      ? colors.inputBorder
+                      : colors.primary + "15",
+                    opacity: readOnly ? 0.6 : 1,
+                  },
+                ]}
+                disabled={readOnly}
+                onPress={handleSelectAllChecklist}>
+                <Feather name={isAllChecklistSelected ? "check-square" : "square"} size={16} color={colors.primary} />
+                <ThemedText type="small" style={{ color: colors.primary, marginLeft: Spacing.xs }}>
+                  {isAllChecklistSelected ? "Deselect All" : "Select All"}
                 </ThemedText>
-                {itemList.map((item, index) => (
-                  <FormCheckbox
-                    key={`${category}-${index}`}
-                    label={`${index + 1}. ${item.replace(/_/g, " ")}`}
-                    checked={checklist[item] || false}
-                    onChange={(checked) => handleChecklistChange(item, checked)}
-                    readOnly={readOnly}
-                  />
-                ))}
-              </View>
-            );
-          })}
-        </Card>
+              </Pressable>
+            </View>
+            {checklistData?.data && Object.entries(checklistData.data).map(([category, items]) => {
+              const itemList = items as string[];
+              return (
+                <View key={category} style={{ marginBottom: Spacing.md }}>
+                  <ThemedText type="h4" style={{ marginBottom: Spacing.sm }}>
+                    {category.replace(/_/g, " ").toUpperCase()}
+                  </ThemedText>
+                  {itemList.map((item, index) => (
+                    <FormCheckbox
+                      key={`${category}-${index}`}
+                      label={`${index + 1}. ${item.replace(/_/g, " ")}`}
+                      checked={checklist[item] || false}
+                      onChange={(checked) => handleChecklistChange(item, checked)}
+                      readOnly={readOnly}
+                    />
+                  ))}
+                </View>
+              );
+            })}
+          </Card>
+         }
 
         <Card elevation={1} style={styles.section}>
           <ThemedText type="h4" style={styles.sectionTitle}>Parts & Lubricants Supplied:</ThemedText>
@@ -934,7 +1128,7 @@ export default function MaintenanceFormScreen() {
         <Card elevation={1} style={styles.section}>
           <ThemedText type="h4" style={styles.sectionTitle}>Signatures & Completion</ThemedText>
           <SignatureBox label="Service Technician Signature" value={technicianSignature} onChange={setTechnicianSignature} readOnly={readOnly}/>
-          <SignatureBox label="KSS Supervisor Signature" value={supervisorSignature} onChange={setSupervisorSignature} readOnly={readOnly}/>
+          <SignatureBox label="Alpine Supervisor Signature" value={supervisorSignature} onChange={setSupervisorSignature} readOnly={readOnly}/>
           <FormInput label="Service Department" placeholder="Enter department" value={serviceDepartment} onChangeText={setServiceDepartment} editable={!readOnly} selectTextOnFocus={!readOnly} readOnly={readOnly}/>
           <FormDatePicker label="Completion Date" value={completionDate} onChange={setCompletionDate} readOnly={readOnly}/>
         </Card>
@@ -1029,4 +1223,22 @@ const styles = StyleSheet.create({
     fontWeight: "bold"
   },
   draftButton: { marginBottom: Spacing.md },
+  radioOption: { flexDirection: "row", alignItems: "center", marginBottom: Spacing.md,},
+  radioGroup: {
+    width: 20,
+    height: 20,
+    borderRadius: Spacing.md,
+    borderWidth: 2,
+    borderColor: Colors.light.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 10,
+  },
+  radioSelected: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: Colors.light.primary
+  }
 });
+

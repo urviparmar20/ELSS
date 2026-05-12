@@ -11,9 +11,10 @@ import { ServiceReportRecord }  from "../types/serviceReport"
 import { Colors, Spacing, BorderRadius } from "../constants/theme";
 import { Feather } from "@expo/vector-icons";
 import type { ReportsStackParamList } from "../navigation/ReportsStackNavigator";
-import { useServiceReports } from "../hooks/useServiceReports";
 import CustomLoader from "../components/CustomLoader";
 import { usePastSRList } from "../hooks/usePastSRList";
+import { FormDatePicker } from "../components/FormDatePicker";
+import { Toast } from "react-native-toast-message/lib/src/Toast";
 
 type ReportsNavigationProp = NativeStackNavigationProp<ReportsStackParamList>;
 
@@ -25,7 +26,8 @@ export default function PastSRListScreen() {
   const isInitialLoad = React.useRef(true);
   const hasMounted = React.useRef(false);
 
-
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
   const [reports, setReports] = useState<ServiceReportRecord[]>([]);
@@ -33,16 +35,56 @@ export default function PastSRListScreen() {
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const { data, isLoading, error } = usePastSRList(currentPage);
- 
-  const filteredReports = reports.filter((report: any) => {
-    const matchesSearch =
-      (report.companyName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (report.mcSerialNo || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (report.equipmentTypeName || "").toLowerCase().includes(searchQuery.toLowerCase());
+
+  const normalizeText = (text: string) =>
+  text
+    .replace(/–/g, "-")
+    .trim()
+    .toLowerCase();
+  const filteredReports = reports.filter(
+    (report: any) => {
+      const query = normalizeText(searchQuery);
+
+      const matchesSearch =
+        (report.companyName || "")
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase()) ||
   
-    const matchesFilter = filterStatus ? report.status === filterStatus : true;
-    return matchesSearch && matchesFilter;
-  });
+        (report.mcSerialNo || "")
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase()) ||
+  
+        (report.equipmentTypeName || "")
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase()) ||
+
+        normalizeText(String(report.raw?.sr_id || "")).includes(query);
+
+      const matchesFilter = filterStatus
+        ? report.status === filterStatus
+        : true;
+  
+      // DATE FILTER
+      const reportDate = new Date(
+        report.createdAt
+      );
+  
+      const from = fromDate
+        ? reportDate >= new Date(fromDate)
+        : true;
+  
+      const to = toDate
+        ? reportDate <= new Date(toDate)
+        : true;
+  
+      return (
+        matchesSearch &&
+        matchesFilter &&
+        from &&
+        to
+      );
+    }
+  );
   
   useEffect(() => {
     if (!data) return;
@@ -121,10 +163,13 @@ export default function PastSRListScreen() {
     <Card
       elevation={1}
       style={styles.listItem}
-      onPress={() => navigation.navigate("ServiceReportForm", { report: item, readOnly: true })}
+      onPress={() => navigation.navigate("SRDetail", { report: item, sr_id: item.raw?.sr_id,readOnly: true })}
     >
+      <ThemedText type="body" numberOfLines={1} style={styles.srId}>
+        {item.raw.sr_id}
+      </ThemedText>
       <View style={styles.listItemHeader}>
-        <View style={styles.listItemInfo}>
+        <View>
           <ThemedText type="h4" numberOfLines={1}>
             {item.companyName}
           </ThemedText>
@@ -157,9 +202,6 @@ export default function PastSRListScreen() {
       <ThemedText type="h3" style={[styles.emptyTitle, { color: colors.textSecondary }]}>
         No Service Reports
       </ThemedText>
-      <ThemedText type="body" style={{ color: colors.textSecondary, textAlign: "center" }}>
-        Tap the + button to create your first service report
-      </ThemedText>
     </View>
   );
 
@@ -187,6 +229,79 @@ export default function PastSRListScreen() {
           ) : null}
         </View>
       </View>
+      <View style={styles.dateFilterRow}>
+        {/* FROM */}
+        <View style={{ flex: 1 }}>
+          <FormDatePicker
+            value={fromDate}
+            placeholder="From"
+            onChange={(selectedDate) => {
+
+              if (
+                toDate &&
+                new Date(selectedDate) >
+                  new Date(toDate)
+              ) {
+                Toast.show({
+                  type: "error",
+                  text1:
+                    "From date cannot be later than To date",
+                });
+                return;
+              }
+
+              setFromDate(selectedDate);
+            }}
+          />
+        </View>
+
+        <ThemedText style={styles.dateSeparator}>
+          —
+        </ThemedText>
+
+        {/* TO */}
+        <View style={{ flex: 1 }}>
+          <FormDatePicker
+            value={toDate}
+            placeholder="To"
+            onChange={(selectedDate) => {
+
+              if (
+                fromDate &&
+                new Date(selectedDate) <
+                  new Date(fromDate)
+              ) {
+                Toast.show({
+                  type: "error",
+                  text1:
+                    "To date cannot be earlier than From date",
+                });
+                return;
+              }
+
+              setToDate(selectedDate);
+            }}
+          />
+        </View>
+
+        {/* CLEAR */}
+        {(fromDate || toDate) && (
+          <Pressable
+            style={styles.clearDateButton}
+            onPress={() => {
+              setFromDate("");
+              setToDate("");
+            }}
+          >
+            <Feather
+              name="x"
+              size={18}
+              color="#fff"
+            />
+          </Pressable>
+        )}
+      </View>
+
 
       {/* FULL SCREEN LOADER (initial load only) */}
       {isFirstLoading && (
@@ -201,12 +316,13 @@ export default function PastSRListScreen() {
       {/* LIST */}
       {hasData && (
         <FlatList
-          data={filteredReports}
+          data={filteredReports || []}
           renderItem={renderItem}
           keyExtractor={(item) => item.id}
           onEndReached={loadMore}
           onEndReachedThreshold={0.4}
           ListFooterComponent={renderFooter}
+          ListEmptyComponent={renderEmptyState}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
         />
@@ -240,6 +356,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: Spacing.lg,
+    paddingBottom: 70
   },
   listItem: {
     marginBottom: Spacing.md,
@@ -249,10 +366,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "flex-start",
     marginBottom: Spacing.sm,
-  },
-  listItemInfo: {
-    flex: 1,
-    marginRight: Spacing.md,
   },
   listItemDetails: {
     gap: Spacing.xs,
@@ -295,5 +408,38 @@ const styles = StyleSheet.create({
   pageInfo: {
     minWidth: 100,
     textAlign: "center",
+  },
+  srId:{
+    fontSize: Spacing.md,
+    fontWeight: "600",
+    color: Colors.light.blue,
+    backgroundColor: Colors.light.blueBG,
+    paddingVertical: 2,
+    paddingHorizontal: Spacing.sm,
+    borderRadius: BorderRadius.xs,
+    alignSelf: "flex-start",
+    marginBottom: Spacing.xs
+  },
+  dateFilterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: Spacing.lg,
+    gap: Spacing.sm,
+    marginBottom: Spacing.sm,
+  },
+  
+  dateSeparator: {
+    marginBottom: Spacing.md,
+    color: Colors.light.textSecondary,
+  },
+  
+  clearDateButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.light.error,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: Spacing.md,
   },
 });

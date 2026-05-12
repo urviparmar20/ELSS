@@ -119,6 +119,7 @@ export type ValidationResult = {
 };
 
 export interface ServiceReportRecord {
+  raw: any;
   id: string;
   companyId: string;
   companyName: string;
@@ -155,4 +156,5 @@ export interface ServiceReportRecord {
   isChargeable: boolean | null;
   status: "pending" | "completed" | "overdue" | "draft" | "submit";
   createdAt: string;
+  srID: string;
 }

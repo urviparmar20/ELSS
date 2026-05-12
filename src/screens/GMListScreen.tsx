@@ -15,7 +15,8 @@ import { useGeneralMaintenanceList } from "../hooks/useGeneralMaintenanceList";
 import { Card } from "../components/Card";
 import { MaintenanceRecord } from "../types/maintenance";
 import CustomLoader from "../components/CustomLoader";
-
+import { FormDatePicker } from "../components/FormDatePicker";
+import { Toast } from "react-native-toast-message/lib/src/Toast";
 
 type MaintenanceNavigationProp = NativeStackNavigationProp<MaintenanceStackParamList>;
 
@@ -32,6 +33,8 @@ export default function GMListScreen() {
   const [gMList, setgMList] = useState<any[]>([]);
   const [page, setPage] = useState(1);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
 
   const { data, isLoading } =
   useGeneralMaintenanceList();
@@ -42,6 +45,7 @@ export default function GMListScreen() {
     }
   }, [data]); 
 
+  
   useEffect(() => {
     setPage(1);
   }, [searchQuery, filterStatus, gMList]);
@@ -58,36 +62,78 @@ export default function GMListScreen() {
     return isPending === "Y" ? "Pending" : "Completed";
   };
 
-  const filteredReports = (gMList ?? []).filter((report: any) => {
-    const matchesSearch =
-        (report.company_name || "").toLowerCase().includes(searchQuery) ||
-        (report.mc || "").toLowerCase().includes(searchQuery) ||
-        (report.equipment_type || "").toLowerCase().includes(searchQuery);
+  const normalizeText = (text: string) =>
+    text
+      .replace(/–/g, "-")
+      .trim()
+      .toLowerCase();
+  const filteredReports = (gMList ?? []).filter(
+    (report: any) => {
+      const query = normalizeText(searchQuery);
+
+      const matchesSearch =
+        (report.company_name || "")
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase()) ||
+  
+        (report.mc || "")
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase()) ||
+  
+        (report.equipment_type || "")
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase()) ||
+
+        normalizeText(String(report.gm_id || "")).includes(query);
+
+  
       const matchesFilter = filterStatus
-        ? getStatusLabel(report.is_pending) === filterStatus
+        ? getStatusLabel(report.is_pending) ===
+          filterStatus
         : true;
+  
+      // DATE FILTER
+      const reportDate = new Date(
+        report.current_date
+      );
+  
+      const from =
+        fromDate
+          ? reportDate >= new Date(fromDate)
+          : true;
+  
+      const to =
+        toDate
+          ? reportDate <= new Date(toDate)
+          : true;
+  
+      return (
+        matchesSearch &&
+        matchesFilter &&
+        from &&
+        to
+      );
+    }
+  );
 
-      return matchesSearch && matchesFilter;
-    });
-
-    const visibleReports = filteredReports.slice(
-      0,
-      page * ITEMS_PER_PAGE
-    );
+  const visibleReports = filteredReports.slice(
+    0,
+    page * ITEMS_PER_PAGE
+  );
     
-    const loadMore = () => {
-      if (isFetchingMore) return;
-    
-      if (visibleReports.length >= filteredReports.length) return;
-    
-      setIsFetchingMore(true);
-    
-      // simulate async loading (for UX)
-      setTimeout(() => {
-        setPage((prev) => prev + 1);
-        setIsFetchingMore(false);
-      }, 500);
-    };
+  const loadMore = () => {
+    if (isFetchingMore) return;
+  
+    if (visibleReports.length >= filteredReports.length) return;
+  
+    setIsFetchingMore(true);
+  
+    // simulate async loading (for UX)
+    setTimeout(() => {
+      setPage((prev) => prev + 1);
+      setIsFetchingMore(false);
+    }, 500);
+  };
     
   
   const paginatedReports = filteredReports;
@@ -116,19 +162,17 @@ export default function GMListScreen() {
     );
   };
   
+
   const renderItem = ({ item }: { item: MaintenanceRecord }) => (
     <Card
       elevation={1}
       style={styles.listItem}
-      // onPress={() => navigation.navigate("ServiceReportDetail", { id: item.id })}
-    >
+      onPress={() => navigation.navigate("GMDetail", { report: item, gm_id: item.gm_id, readOnly: false })}
+    > 
       <View style={styles.listItemHeader}>
         <View style={styles.listItemInfo}>
-          <ThemedText type="h4" numberOfLines={1}>
-            {item.company_name}
-          </ThemedText>
-          <ThemedText type="small" style={{ color: colors.textSecondary }}>
-            {item.equipment}
+          <ThemedText type="small" numberOfLines={1} style={styles.gmId}>
+            {item.gm_id}
           </ThemedText>
         </View>
         <View
@@ -144,6 +188,38 @@ export default function GMListScreen() {
             {getStatusText(item.is_pending)}
           </ThemedText>
         </View>
+        {/* <View>
+          <ThemedText
+            type="small"
+            style={[styles.statusText, { color: colors.primary }]}
+          >
+            {getChecklistLabel(item.checklist_version)}
+          </ThemedText>
+        </View> */}
+      </View>
+      
+      <View style={styles.listItemHeader}>
+        <View>
+          <ThemedText type="h4" numberOfLines={1}>
+            {item.company_name}
+          </ThemedText>
+          <ThemedText type="small" style={{ color: colors.textSecondary }}>
+            {item.equipment}
+          </ThemedText>
+        </View>
+        {/* <View
+          style={[
+            styles.statusBadge,
+            { backgroundColor: getStatusColor(item.is_pending) + "20" },
+          ]}
+        >
+          <ThemedText
+            type="small"
+            style={[styles.statusText, { color: getStatusColor(item.is_pending) }]}
+          >
+            {getStatusText(item.is_pending)}
+          </ThemedText>
+        </View> */}
       </View>
 
       <View style={styles.listItemDetails}>
@@ -165,7 +241,7 @@ export default function GMListScreen() {
         <Pressable
           style={[styles.actionButton, { backgroundColor: colors.primary + "20" }]}
           onPress={() =>
-            navigation.navigate("GMForm", { report: item, readOnly: false })
+            navigation.navigate("GMForm", { report: item, gm_id: item.gm_id, readOnly: false })
           }
         >
           <Feather name="edit-2" size={16} color={colors.primary} />
@@ -231,9 +307,81 @@ export default function GMListScreen() {
       </View>
 
       <View style={styles.filterContainer}>
+        
         <FilterChip label="All" value={null} />
         <FilterChip label="Pending" value="pending" />
         <FilterChip label="Completed" value="completed" />
+      </View>
+      <View style={styles.dateFilterRow}>
+        {/* FROM */}
+        <View style={{ flex: 1 }}>
+          <FormDatePicker
+            value={fromDate}
+            placeholder="From"
+            onChange={(selectedDate) => {
+
+              if (
+                toDate &&
+                new Date(selectedDate) >
+                  new Date(toDate)
+              ) {
+                Toast.show({
+                  type: "error",
+                  text1: "From date cannot be later than To date",
+                });
+                return;
+              }
+
+              setFromDate(selectedDate);
+            }}
+          />
+        </View>
+
+        <ThemedText style={styles.dateSeparator}>
+          —
+        </ThemedText>
+
+        {/* TO */}
+        <View style={{ flex: 1 }}>
+          <FormDatePicker
+            value={toDate}
+            placeholder="To"
+            onChange={(selectedDate) => {
+
+              if (
+                fromDate &&
+                new Date(selectedDate) <
+                  new Date(fromDate)
+              ) {
+                Toast.show({
+                  type: "error",
+                  text1: "To date cannot be earlier than From date",
+                });
+                return;
+              }
+
+              setToDate(selectedDate);
+            }}
+          />
+      </View>
+
+  {/* CLEAR BUTTON */}
+  {(fromDate || toDate) && (
+    <Pressable
+      style={styles.clearDateButton}
+      onPress={() => {
+        setFromDate("");
+        setToDate("");
+      }}
+    >
+      <Feather
+        name="x"
+        size={18}
+        color="#fff"
+      />
+    </Pressable>
+  )}
+
       </View>
 
       <FlatList
@@ -311,8 +459,16 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.sm,
   },
   listItemInfo: {
-    flex: 1,
     marginRight: Spacing.md,
+    backgroundColor: Colors.light.blueBG,
+    paddingVertical: 2,
+    paddingHorizontal: Spacing.sm,
+    borderRadius: BorderRadius.xs,
+  },
+  gmId:{
+    fontSize: Spacing.md,
+    fontWeight: 600,
+    color: Colors.light.blue
   },
   statusBadge: {
     paddingHorizontal: Spacing.md,
@@ -367,5 +523,26 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
-  }
+  },
+  dateFilterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: Spacing.lg,
+    gap: Spacing.sm,
+    marginBottom: Spacing.sm,
+  },
+  
+  dateSeparator: {
+    marginBottom: Spacing.md,
+    color: Colors.light.textSecondary,
+  },
+  clearDateButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.light.error,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: Spacing.md,
+  },
 });

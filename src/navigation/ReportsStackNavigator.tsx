@@ -6,12 +6,19 @@ import ServiceReportFormScreen from "../screens/ServiceReportFormScreen";
 import { useScreenOptions } from "../hooks/useScreenOptions";
 import DrawerMenuButton from "../components/DrawerMenuButton";
 import PastSRListScreen from "../screens/PastSRListScreen";
+import SRDetailScreen from "../screens/SRDetailScreen";
 
 export type ReportsStackParamList = {
   ServiceReportsList: undefined;
   PastSRList: undefined;
   ServiceReportForm: {
     report?: any;
+    sr_id?: string;
+    readOnly?: boolean;
+  } | undefined;
+  SRDetail: {
+    report?: any;
+    sr_id?: string;
     readOnly?: boolean;
   } | undefined;
 };
@@ -47,6 +54,10 @@ export default function ReportsStackNavigator() {
           headerTitle: "New Service Report",
         }}
       /> 
+      <Stack.Screen
+        name="SRDetail"
+        component={SRDetailScreen}
+      />
     </Stack.Navigator>
   );
 }

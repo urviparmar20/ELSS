@@ -73,7 +73,8 @@ export default function ServiceReportFormScreen() {
 
   const existingReport = route.params?.report || null;
   const readOnly = route.params?.readOnly ?? false;
-  
+  const srId = route.params?.sr_id;
+
   const formData = React.useMemo(
     () => (existingReport ? mapRawServiceReport(existingReport.raw) : null),
     [existingReport]
@@ -250,9 +251,9 @@ export default function ServiceReportFormScreen() {
   
   useEffect(() => {
     navigation.setOptions({
-      headerTitle: readOnly ? "Past Service Report" : isEditing ? "Edit Service Report" : "New Service Report",
+      headerTitle: readOnly || isEditing ? srId : "New Service Report",
     });
-  }, [isEditing, navigation]);
+  }, [isEditing, navigation, srId]);
 
   useEffect(() => {
     if (formData?.checklist) {
@@ -644,11 +645,11 @@ export default function ServiceReportFormScreen() {
         // images,
       });
 
-      // console.log("=== FORMDATA START ===");
-      // for (const pair of formData.entries()) {
-      //   console.log(pair[0], pair[1]);
-      // }
-      // console.log("=== FORMDATA END ===");
+      console.log("=== FORMDATA START ===");
+      for (const pair of formData.entries()) {
+        console.log(pair[0], pair[1]);
+      }
+      console.log("=== FORMDATA END ===");
       
       const res = await mutateAsync({ formData, mode: "submit" });
       if (res) {
@@ -785,12 +786,6 @@ export default function ServiceReportFormScreen() {
         {/* Equipment Details */}
         <Card elevation={1} style={styles.section}>
           <ThemedText type="h4" style={styles.sectionTitle}>Equipment Details</ThemedText>
-          <FormInput label="M/C or Serial No *" placeholder="Enter serial number" value={mcSerialNo} onChangeText={setMcSerialNo} editable={!readOnly}
-            selectTextOnFocus={!readOnly} readOnly={readOnly}/>
-          <FormInput label="Hour Meter" placeholder="Enter hour meter reading" value={hourMeter} onChangeText={setHourMeter} keyboardType="numeric" editable={!readOnly}
-            selectTextOnFocus={!readOnly} readOnly={readOnly}/>
-          <FormInput label="Job No" placeholder="Enter job number" value={jobNo} onChangeText={setJobNo} editable={!readOnly}
-            selectTextOnFocus={!readOnly} readOnly={readOnly}/>
 
           <FormDropdown
             label="Equipment Type"
@@ -812,12 +807,19 @@ export default function ServiceReportFormScreen() {
             onValueChange={(id) => setEquipmentId(id)}
             readOnly={readOnly}
           />
+          
+          <FormInput label="M/C or Serial No *" placeholder="Enter serial number" value={mcSerialNo} onChangeText={setMcSerialNo} editable={!readOnly}
+            selectTextOnFocus={!readOnly} readOnly={readOnly}/>
+          <FormInput label="Hour Meter" placeholder="Enter hour meter reading" value={hourMeter} onChangeText={setHourMeter} keyboardType="numeric" editable={!readOnly}
+            selectTextOnFocus={!readOnly} readOnly={readOnly}/>
+          <FormInput label="Job No" placeholder="Enter job number" value={jobNo} onChangeText={setJobNo} editable={!readOnly}
+            selectTextOnFocus={!readOnly} readOnly={readOnly}/>
 
           <FormInput label="Client Name" placeholder="Enter client name" value={clientName} onChangeText={setClientName} editable={!readOnly} selectTextOnFocus={!readOnly} readOnly={readOnly}/>
           <FormInput label="Client Contact No" placeholder="Enter client contact" value={clientContactNo} onChangeText={setClientContactNo} keyboardType="phone-pad" editable={!readOnly} selectTextOnFocus={!readOnly} readOnly={readOnly}/>
 
           {/* OTP Section */}
-          {
+          {/* {
             isEditing ? <ThemedText type="body" style={styles.verifiedText}>Contact Number Verified</ThemedText> :
             <View style={styles.twoColumn}>
               <View style={styles.inputHalf}>
@@ -855,7 +857,7 @@ export default function ServiceReportFormScreen() {
                 }             
               </View>
           </View>
-          }
+          } */}
           
         </Card>
 
@@ -1306,3 +1308,4 @@ const styles = StyleSheet.create({
     fontWeight: "bold"
   }
 });
+

@@ -26,10 +26,10 @@ export const validateForm = (params: ValidateFormParams): { valid: boolean; erro
     technicianSignature,
     supervisorSignature,
     serviceDepartment,
-    services
+    // services
   } = params;
 
-  const checklistValues = Object.values(params.checklist || {});
+  // const checklistValues = Object.values(params.checklist || {});
 
   // ---- COMMON ----
   if (!companyId) errors.push("Company is required");
@@ -49,9 +49,9 @@ export const validateForm = (params: ValidateFormParams): { valid: boolean; erro
   // SERVICES (Weekly / Monthly / etc.)
   // --------------------
   
-  if (!services || services.length === 0) {
-    errors.push("Select at least one service");
-  }
+  // if (!services || services.length === 0) {
+  //   errors.push("Select at least one service");
+  // }
   // ---- Service Times (up to 4) ----
   // const ordinals = ["First", "Second", "Third", "Fourth"];
 
@@ -68,9 +68,9 @@ export const validateForm = (params: ValidateFormParams): { valid: boolean; erro
   // }
   if (!remarks) errors.push("Remarks is required");
 
-  if (!checklistValues.some((v) => v === true)) {
-    errors.push("At least one operation checklist item must be selected");
-  }
+  // if (!checklistValues.some((v) => v === true)) {
+  //   errors.push("At least one operation checklist item must be selected");
+  // }
   
 
   if (!technicianSignature) errors.push("Please take Technician Signature");

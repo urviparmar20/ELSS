@@ -5,12 +5,19 @@ import GMFormScreen from "../screens/GMFormScreen";
 import { useScreenOptions } from "../hooks/useScreenOptions";
 import DrawerMenuButton from "../components/DrawerMenuButton";
 import PastGMListScreen from "../screens/PastGmListScreen";
+import GMDetailScreen from "../screens/GMDetailScreen";
 
 export type MaintenanceStackParamList = {
   GMList: undefined;
   PastGMList: undefined;
   GMForm: {
     report?: any;
+    gm_id?: string;
+    readOnly?: boolean;
+  } | undefined;
+  GMDetail: {
+    report?: any;
+    gm_id?: string;
     readOnly?: boolean;
   } | undefined;
 };
@@ -45,6 +52,10 @@ export default function MaintenanceStackNavigator() {
           presentation: "modal",
           headerTitle: "New Maintenance",
         }}
+      />
+      <Stack.Screen
+        name="GMDetail"
+        component={GMDetailScreen}
       />
     </Stack.Navigator>
   );

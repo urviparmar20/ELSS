@@ -3,14 +3,16 @@ import { useSelector } from "react-redux";
 import { RootState } from "../store";
 import { getGeneralChecklistApi } from "../api/generalChecklist";
 
-export const useGeneralChecklist = (equipmentTypeId?: string) => {
+export const useGeneralChecklist = (equipmentTypeId?: string, frequency?: string
+  ) => {
   const token = useSelector((state: RootState) => state.auth.token);
 
   return useQuery({
-    queryKey: ["general-checklist", equipmentTypeId],
+    queryKey: ["general-checklist", equipmentTypeId, frequency],
     queryFn: () =>
       getGeneralChecklistApi({
         equipmentTypeId: equipmentTypeId as string,
+        frequency,
         token: token as string,
       }),
     enabled: !!token && !!equipmentTypeId,

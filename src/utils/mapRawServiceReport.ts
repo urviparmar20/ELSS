@@ -22,6 +22,7 @@ export function mapRawServiceReport(raw: any) {
     signature_technician: raw.signature_technician || "",
 
     serviceTechnicianName: raw.technician || "",
+    srID: raw.sr_id || "",
 
     // ---------- DATE + TIME ----------
     serviceTimes: extractServiceTimes(raw),

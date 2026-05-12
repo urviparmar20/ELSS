@@ -14,7 +14,8 @@ import { Card } from "../components/Card";
 import { MaintenanceRecord } from "../types/maintenance";
 import CustomLoader from "../components/CustomLoader";
 import { usePastGMList } from "../hooks/userPastGMList";
-
+import { FormDatePicker } from "../components/FormDatePicker";
+import { Toast } from "react-native-toast-message/lib/src/Toast";
 
 type MaintenanceNavigationProp = NativeStackNavigationProp<MaintenanceStackParamList>;
 
@@ -27,6 +28,8 @@ export default function PastGMListScreen() {
   const { theme, isDark } = useTheme();
   const colors = Colors.light;
 
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
   const [gMList, setgMList] = useState<any[]>([]);
@@ -49,17 +52,59 @@ export default function PastGMListScreen() {
     return isPending === "Y" ? "pending" : "completed";
   };
 
-  const filteredReports = (gMList ?? []).filter((report: any) => {
-    const matchesSearch =
-        (report.company_name || "").toLowerCase().includes(searchQuery) ||
-        (report.mc || "").toLowerCase().includes(searchQuery) ||
-        (report.equipment_type || "").toLowerCase().includes(searchQuery);
-      const matchesFilter = filterStatus
-        ? getStatusLabel(report.is_pending) === filterStatus
-        : true;
+    const normalizeText = (text: string) =>
+    text
+      .replace(/–/g, "-")
+      .trim()
+      .toLowerCase();
+      
+    const filteredReports = (gMList ?? []).filter(
+      (report: any) => {
+        const query = normalizeText(searchQuery);
 
-      return matchesSearch && matchesFilter;
-    });
+        const matchesSearch =
+          (report.company_name || "")
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase()) ||
+    
+          (report.mc || "")
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase()) ||
+    
+          (report.equipment_type || "")
+            .toLowerCase()
+            .includes(searchQuery.toLowerCase()) ||
+            
+          normalizeText(String(report.gm_id || "")).includes(query);
+    
+        const matchesFilter = filterStatus
+          ? getStatusLabel(report.is_pending) === filterStatus
+          : true;
+    
+        // DATE FILTER
+        // DATE FILTER
+      const reportDate = new Date(
+        report.current_date
+      );
+  
+      const from =
+        fromDate
+          ? reportDate >= new Date(fromDate)
+          : true;
+  
+      const to =
+        toDate
+          ? reportDate <= new Date(toDate)
+          : true;
+    
+        return (
+          matchesSearch &&
+          matchesFilter &&
+          from &&
+          to
+        );
+      }
+    );
 
     const visibleReports = filteredReports.slice(
       0,
@@ -110,10 +155,13 @@ export default function PastGMListScreen() {
     <Card
       elevation={1}
       style={styles.listItem}
-      onPress={() => navigation.navigate("GMForm", { report: item, readOnly: true })}
+      onPress={() => navigation.navigate("GMDetail", { report: item, gm_id: item.gm_id, readOnly: true })}
     >
+      <ThemedText type="body" numberOfLines={1} style={styles.gmId}>
+        {item.gm_id}
+      </ThemedText>
       <View style={styles.listItemHeader}>
-        <View style={styles.listItemInfo}>
+        <View>
           <ThemedText type="h4" numberOfLines={1}>
             {item.company_name}
           </ThemedText>
@@ -146,9 +194,6 @@ export default function PastGMListScreen() {
       <ThemedText type="h3" style={[styles.emptyTitle, { color: colors.textSecondary }]}>
         No Maintenance Records
       </ThemedText>
-      <ThemedText type="body" style={{ color: colors.textSecondary, textAlign: "center" }}>
-        Tap the + button to create your first maintenance record
-      </ThemedText>
     </View>
   );
 
@@ -176,9 +221,81 @@ export default function PastGMListScreen() {
           ) : null}
         </View>
       </View>
+      <View style={styles.dateFilterRow}>
+        {/* FROM */}
+        <View style={{ flex: 1 }}>
+          <FormDatePicker
+            value={fromDate}
+            placeholder="From"
+            onChange={(selectedDate) => {
+
+              if (
+                toDate &&
+                new Date(selectedDate) >
+                  new Date(toDate)
+              ) {
+                Toast.show({
+                  type: "error",
+                  text1:
+                    "From date cannot be later than To date",
+                });
+                return;
+              }
+
+              setFromDate(selectedDate);
+            }}
+          />
+        </View>
+
+        <ThemedText style={styles.dateSeparator}>
+          —
+        </ThemedText>
+
+        {/* TO */}
+        <View style={{ flex: 1 }}>
+          <FormDatePicker
+            value={toDate}
+            placeholder="To"
+            onChange={(selectedDate) => {
+
+              if (
+                fromDate &&
+                new Date(selectedDate) <
+                  new Date(fromDate)
+              ) {
+                Toast.show({
+                  type: "error",
+                  text1:
+                    "To date cannot be earlier than From date",
+                });
+                return;
+              }
+
+              setToDate(selectedDate);
+            }}
+          />
+        </View>
+
+        {/* CLEAR */}
+        {(fromDate || toDate) && (
+          <Pressable
+            style={styles.clearDateButton}
+            onPress={() => {
+              setFromDate("");
+              setToDate("");
+            }}
+          >
+            <Feather
+              name="x"
+              size={18}
+              color="#fff"
+            />
+          </Pressable>
+        )}
+      </View>
 
       <FlatList
-        data={visibleReports}
+        data={visibleReports || []}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
@@ -217,6 +334,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     paddingHorizontal: Spacing.lg,
+    paddingBottom: 70
   },
   listItem: {
     marginBottom: Spacing.md,
@@ -226,10 +344,6 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "flex-start",
     marginBottom: Spacing.sm,
-  },
-  listItemInfo: {
-    flex: 1,
-    marginRight: Spacing.md,
   },
   listItemDetails: {
     gap: Spacing.xs,
@@ -250,5 +364,37 @@ const styles = StyleSheet.create({
     marginTop: Spacing.lg,
     marginBottom: Spacing.sm,
   },
-
+  gmId:{
+    fontSize: Spacing.md,
+    fontWeight: "600",
+    color: Colors.light.blue,
+    backgroundColor: Colors.light.blueBG,
+    paddingVertical: 2,
+    paddingHorizontal: Spacing.sm,
+    borderRadius: BorderRadius.xs,
+    alignSelf: "flex-start",
+    marginBottom: Spacing.xs
+  },
+  dateFilterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: Spacing.lg,
+    gap: Spacing.sm,
+    marginBottom: Spacing.sm,
+  },
+  
+  dateSeparator: {
+    marginBottom: Spacing.md,
+    color: Colors.light.textSecondary,
+  },
+  
+  clearDateButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: Colors.light.error,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: Spacing.md,
+  },
 });

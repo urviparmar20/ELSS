@@ -30,6 +30,8 @@ export const Colors = {
     info: "#2196F3",
     inputBorder: "#BDBDBD",
     inputBackground: "#FFFFFF",
+    blue: "#3269a6",
+    blueBG: "#DCEEFF"
   },
   dark: {
     text: "#ECEDEE",

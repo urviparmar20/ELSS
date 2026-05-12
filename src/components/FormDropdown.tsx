@@ -91,7 +91,7 @@ export function FormDropdown({
               styles.modalContent,
               { 
                 backgroundColor: colors.backgroundDefault,
-                paddingBottom: insets.bottom + Spacing.lg,
+                // paddingBottom: insets.bottom + Spacing.lg,
               }
             ]}
             onPress={(e) => e.stopPropagation()}
