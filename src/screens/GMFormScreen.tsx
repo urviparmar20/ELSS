@@ -87,7 +87,7 @@ export default function MaintenanceFormScreen() {
   const [companyOptions, setCompanyOptions] = useState<{ id: string; name: string }[]>([]);
   const [equipmentTypeOptions, setEquipmentTypeOptions] = useState<
   { id: string; name: string }[]>([]);
-  const [equipmentOptions, setEquipmentOptions] = useState<{ id: string; name: string }[]>([]);
+  const [equipmentOptions, setEquipmentOptions] = useState<{ id: string; name: string; serialNo: string }[]>([]);
   const [selectedServiceType, setSelectedServiceType] = useState<string | null>(null);
   const [companyId, setCompanyId] = useState(formData?.companyId || "");
   const [mcSerialNo, setMcSerialNo] = useState(formData?.mcSerialNo || "");
@@ -109,11 +109,9 @@ export default function MaintenanceFormScreen() {
   const [serviceTechnicianName, setServiceTechnicianName] = useState(formData?.serviceTechnicianName  || "");
   const [serviceTimes, setServiceTimes] = useState<ServiceTime[]>(formData?.serviceTimes || [{ date: new Date().toISOString().split("T")[0], startTime: "09:00", endTime: "17:00" }]);
 
-  // const [finalChecklistPayload, setFinalChecklistPayload] = useState<any[]>([]);
   const [finalChecklistPayload, setFinalChecklistPayload] = useState<any[]>(
     formData?.v2_checklist_data || []
   );
-  console.log('v2_checklist_data', formData?.v2_checklist_data);
   
   const [services, setServices] = useState({
     weeklyChecking: false,
@@ -131,7 +129,6 @@ export default function MaintenanceFormScreen() {
 
   type SubmitAction = "draft" | "submit" | null;
   const [activeAction, setActiveAction] = useState<SubmitAction>(null);
-  const [editableChecklistData, setEditableChecklistData] = useState<any>(null);
   const [technicianSignature, setTechnicianSignature] = useState("");
   const [supervisorSignature, setSupervisorSignature] = useState("");
   const [serviceDepartment, setServiceDepartment] = useState(formData?.serviceDepartment || "");
@@ -148,6 +145,7 @@ export default function MaintenanceFormScreen() {
   const { data: eqTypeData } = useEquipmentTypeList();
   const { data: equipmentListData } = useEquipmentListByType(equipmentTypeId);
   const { data: checklistData, isError, error, } = useGeneralChecklist(equipmentTypeId, selectedServiceType || undefined);
+  
   const {
     mutate: generateOtp,
     isPending: isOtpPending,
@@ -202,12 +200,30 @@ export default function MaintenanceFormScreen() {
   
     setServices(updatedServices);
   }, [isEditing, formData]);
-
-
-  // console.log('selectedServiceType',selectedServiceType);
-  // console.log('setFinalChecklistPayload',finalChecklistPayload);
-
+  const handleEquipmentChange = (id: string) => {
+    setEquipmentId(id);
   
+    const selectedEquipment = equipmentOptions.find(
+      item => item.id === id
+    );
+  
+    if (!selectedEquipment) return;
+  
+    const sr = selectedEquipment.serialNo;
+  
+    // auto fill only if valid
+    if (
+      sr &&
+      sr.trim() !== "" &&
+      sr.toLowerCase() !== "null"
+    ) {
+      setMcSerialNo(sr);
+    } else {
+      // allow manual entry
+      setMcSerialNo("");
+    }
+  };
+  //frequency
   useEffect(() => {
     if (!isEditing) return;
     if (!formData?.frequency) return;
@@ -216,57 +232,7 @@ export default function MaintenanceFormScreen() {
       String(formData.frequency).toLowerCase()
     );
   }, [isEditing, formData]);
-  // console.log('selectedServiceType',formData.frequency);
-  
 
-  //checklistAPFL
-  // Initial checklist for edit mode
-    useEffect(() => {
-      if (!isEditing) return;
-      if (!formData?.v2_checklist_data) return;
-
-      setEditableChecklistData({
-        data: formData.v2_checklist_data,
-      });
-
-      setFinalChecklistPayload(formData.v2_checklist_data);
-    }, [isEditing, formData]);
-    
-    useEffect(() => {
-      if (!selectedServiceType) return;
-      if (!checklistData?.data) return;
-    
-      // EDIT MODE INITIAL LOAD
-      // Keep saved checklist with checked statuses
-      if (
-        isEditing &&
-        selectedServiceType === initialFrequencyRef.current &&
-        formData?.v2_checklist_data?.length
-      ) {
-        setEditableChecklistData({
-          data: formData.v2_checklist_data,
-        });
-    
-        setFinalChecklistPayload(
-          formData.v2_checklist_data
-        );
-    
-        return;
-      }
-    
-      // USER CHANGED SERVICE TYPE
-      // Load fresh checklist from API
-      setEditableChecklistData(checklistData);
-    
-      // reset answers
-      setFinalChecklistPayload([]);
-    
-    }, [
-      selectedServiceType,
-      checklistData,
-      isEditing,
-      formData,
-    ]);
 
   //Company
   useEffect(() => {
@@ -304,6 +270,7 @@ export default function MaintenanceFormScreen() {
     setSupervisorSignature(formData.signature_supervisor || "");
   }, [formData]);
 
+  //company
   useEffect(() => {
     if (!companyOptions.length) return;
     if (!companyName) return;
@@ -354,7 +321,8 @@ export default function MaintenanceFormScreen() {
     if (list?.ids && list?.equip_id) {
       const formatted = list.equip_id.map((equipCode: string, index: number) => ({
         id: String(list.ids[index]),   
-        name: equipCode,               
+        name: equipCode,    
+        serialNo: list.serial_no?.[index] || "",           
       }));
   
       setEquipmentOptions(formatted);
@@ -362,7 +330,7 @@ export default function MaintenanceFormScreen() {
       setEquipmentOptions([]);
     }
   }, [equipmentListData]);
-  
+
   useEffect(() => {
     navigation.setOptions({
       headerTitle: readOnly || isEditing ? gmId : "New Maintenance",
@@ -581,7 +549,7 @@ export default function MaintenanceFormScreen() {
   };
   const selectedServices = getSelectedServices();
 
-  
+
   const handleFormSubmit = async (action: SubmitAction) => {
     setActiveAction(action);
   
@@ -657,7 +625,6 @@ export default function MaintenanceFormScreen() {
           : undefined,
         service_department: serviceDepartment,
         current_date: completionDate instanceof Date ? completionDate.toISOString() : completionDate,
-        // operation_check_list: Object.keys(checklist).length > 0 ? checklist : undefined,
         checklist: isAPOrForklift
           ? finalChecklistPayload
           : undefined,
@@ -672,17 +639,17 @@ export default function MaintenanceFormScreen() {
         frequency: selectedServiceType ? selectedServiceType : undefined
       });
 
-      console.log("=== FORMDATA START ===");
-      for (const pair of formData.entries()) {
-        console.log(pair[0], pair[1]);
-      }
-      console.log("=== FORMDATA END ===");
-      
+      // console.log("=== FORMDATA START ===");
+      // for (const pair of formData.entries()) {
+      //   console.log(pair[0], pair[1]);
+      // }
+      // console.log("=== FORMDATA END ===");
+     
+
       const res = await mutateAsync({ formData});
-      
-      if (res) {
+      if (res?.status_code === 200) {
         queryClient.invalidateQueries({
-          queryKey: ["general-maintenace"],
+          queryKey: ["general-maintenance"],
         });
         Toast.show({
           type: "success",
@@ -714,18 +681,14 @@ export default function MaintenanceFormScreen() {
             options={companyOptions}
             selectedValue={companyId}
             onValueChange={setCompanyId}
-            readOnly={readOnly}
+            readOnly={readOnly || isEditing}
           />
 
           <FormInput label="Address" placeholder="Enter address" value={address} onChangeText={setAddress} multiline editable={!readOnly}
             selectTextOnFocus={!readOnly}
             readOnly={readOnly}/>
-          <FormInput label="Contact Person" placeholder="Enter contact person" value={contactPerson} onChangeText={setContactPerson} editable={!readOnly}
-            selectTextOnFocus={!readOnly}
-            readOnly={readOnly}/>
-          <FormInput label="Contact No" placeholder="Enter contact number" value={contactNo} onChangeText={setContactNo} keyboardType="phone-pad" editable={!readOnly}
-            selectTextOnFocus={!readOnly}
-            readOnly={readOnly}/>
+          <FormInput label="Contact Person" placeholder="Enter contact person" value={contactPerson} onChangeText={setContactPerson} editable={!readOnly && !isEditing}selectTextOnFocus={!readOnly && !isEditing} readOnly={readOnly || isEditing}/>
+          <FormInput label="Contact No" placeholder="Enter contact number" value={contactNo} onChangeText={setContactNo} keyboardType="phone-pad" editable={!readOnly && !isEditing} selectTextOnFocus={!readOnly && !isEditing} readOnly={readOnly || isEditing}/>
           <FormInput label="Email" placeholder="Enter email" value={email} onChangeText={setEmail} editable={!readOnly}
             selectTextOnFocus={!readOnly}
             readOnly={readOnly}/>
@@ -743,7 +706,7 @@ export default function MaintenanceFormScreen() {
               setEquipmentTypeId(v);
               setEquipmentId("");
             }}
-            readOnly={readOnly}
+            readOnly={readOnly || isEditing}
           />
           {/*Equipment ID */}
           <FormDropdown
@@ -751,19 +714,14 @@ export default function MaintenanceFormScreen() {
             placeholder="Select equipment"
             options={equipmentOptions} // { id, name }
             selectedValue={equipmentId}
-            onValueChange={(id) => setEquipmentId(id)}
-            readOnly={readOnly}
+            // onValueChange={(id) => setEquipmentId(id)}
+            onValueChange={handleEquipmentChange}
+            readOnly={readOnly || isEditing}
           />
 
-          <FormInput label="M/C or Serial No *" placeholder="Enter serial number" value={mcSerialNo} onChangeText={setMcSerialNo} editable={!readOnly}
-            selectTextOnFocus={!readOnly}
-            readOnly={readOnly}/>
-          <FormInput label="Hour Meter" placeholder="Enter hour meter reading" value={hourMeter} onChangeText={setHourMeter} keyboardType="numeric" editable={!readOnly}
-            selectTextOnFocus={!readOnly}
-            readOnly={readOnly}/>
-          <FormInput label="Job No" placeholder="Enter job number" value={jobNo} onChangeText={setJobNo} editable={!readOnly}
-            selectTextOnFocus={!readOnly}
-            readOnly={readOnly}/>
+          <FormInput label="M/C or Serial No *" placeholder="Enter serial number" value={mcSerialNo} onChangeText={setMcSerialNo} editable={!readOnly && !isEditing} selectTextOnFocus={!readOnly && !isEditing} readOnly={readOnly || isEditing}/>
+          <FormInput label="Hour Meter" placeholder="Enter hour meter reading" value={hourMeter} onChangeText={setHourMeter} keyboardType="numeric" editable={!readOnly && !isEditing} selectTextOnFocus={!readOnly && !isEditing} readOnly={readOnly || isEditing}/>
+          <FormInput label="Job No" placeholder="Enter job number" value={jobNo} onChangeText={setJobNo} editable={!readOnly && !isEditing} selectTextOnFocus={!readOnly && !isEditing} readOnly={readOnly || isEditing}/>
           
          
           <FormInput label="Client Name" placeholder="Enter client name" value={clientName} onChangeText={setClientName} editable={!readOnly}
@@ -817,9 +775,7 @@ export default function MaintenanceFormScreen() {
 
         <Card elevation={1} style={styles.section}>
           <ThemedText type="h4" style={styles.sectionTitle}>Service Details</ThemedText>
-          <FormInput label="Service Technician Name" placeholder="Enter technician name" value={serviceTechnicianName} onChangeText={setServiceTechnicianName} editable={!readOnly}
-            selectTextOnFocus={!readOnly}
-            readOnly={readOnly}/>
+          <FormInput label="Service Technician Name" placeholder="Enter technician name" value={serviceTechnicianName} onChangeText={setServiceTechnicianName} editable={!readOnly && !isEditing} selectTextOnFocus={!readOnly && !isEditing} readOnly={readOnly || isEditing}/>
           
           <ThemedText type="small" style={styles.label}>Service Times</ThemedText>
          
@@ -1042,7 +998,11 @@ export default function MaintenanceFormScreen() {
           (equipmentTypeId == "3" || equipmentTypeId == "11") ?
           (
             <CheckListAPKL
-              checklistData={editableChecklistData || checklistData}
+              checklistData={
+                isEditing
+                  ? { data: formData?.v2_checklist_data || [] }
+                  : checklistData
+              }
               onChecklistChange={setFinalChecklistPayload}
             />
          

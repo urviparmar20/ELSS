@@ -40,6 +40,7 @@ export default function CheckListAPKL({
     const remarksMap: Record<number, string> = {};
   
     const processActivity = (activity: any) => {
+      // preserve existing status
       if (
         activity.status !== undefined &&
         activity.status !== null
@@ -47,6 +48,7 @@ export default function CheckListAPKL({
         statusMap[activity.id] = Number(activity.status);
       }
   
+      // preserve existing remark
       remarksMap[activity.id] =
         activity.remark || "";
     };
@@ -68,6 +70,15 @@ export default function CheckListAPKL({
         // SYSTEMS
         if (node.systems?.length) {
           node.systems.forEach((system: any) => {
+  
+            // system.activities
+            if (system.activities?.length) {
+              system.activities.forEach((activity: any) => {
+                processActivity(activity);
+              });
+            }
+  
+            // system.items
             if (system.items?.length) {
               extractActivities(system.items);
             }
@@ -85,6 +96,14 @@ export default function CheckListAPKL({
   
     setActivityStatus(statusMap);
     setRemarks(remarksMap);
+  
+    // IMPORTANT
+    const initialPayload = buildPayload(
+      statusMap,
+      remarksMap
+    );
+  
+    onChecklistChange?.(initialPayload);
   
   }, [data]);
   // =========================================

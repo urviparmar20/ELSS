@@ -38,7 +38,6 @@ import {
 } from "../constants/checklists";
 import { validateForm } from "../utils/validateServiceReport";
 import CustomLoader from "../components/CustomLoader";
-import { CustomAlert } from "../components/CustomAlert";
 import { useGenerateOTPSR } from "../hooks/useGenerateOTPSR";
 import { useVerifyOTPSR } from "../hooks/useVerifyOTPSR";
 
@@ -122,6 +121,7 @@ export default function ServiceReportFormScreen() {
   const [repair, setRepair] = useState(formData?.repair || false);
   const [remarks, setRemarks] = useState(formData?.remarks || "");
   const [checklist, setChecklist] = useState<Record<string, boolean>>(formData?.checklist || {});
+  const [isManualSerialNo, setIsManualSerialNo] = useState(false);
 
   const [isChargeable, setIsChargeable] = useState<boolean | null>(formData?.isChargeable ?? null);
   const [partsLubricants, setPartsLubricants] = useState<PartsLubricants>({
@@ -146,6 +146,7 @@ export default function ServiceReportFormScreen() {
   const { data: companyData } = useCompanies();
   const { data: eqTypeData } = useEquipmentTypeList();
   const { data: equipmentListData } = useEquipmentListByType(equipmentTypeId);
+  
   const {
     mutate: generateOtp,
     isPending: isOtpPending,
@@ -248,6 +249,43 @@ export default function ServiceReportFormScreen() {
       setEquipmentOptions([]);
     }
   }, [equipmentListData]);
+
+
+  //sr no
+  useEffect(() => {
+    if (!equipmentId) return;
+    if (!equipmentListData?.data?.equipmentList) return;
+  
+    const equipmentList = equipmentListData.data.equipmentList;
+  
+    const selectedIndex = equipmentList.ids?.findIndex(
+      (itemId: number) => String(itemId) === String(equipmentId)
+    );
+  
+    if (selectedIndex === -1 || selectedIndex === undefined) return;
+  
+    const serialNo = equipmentList.serial_no?.[selectedIndex];
+  
+    const invalidSerial =
+      !serialNo ||
+      serialNo === "null" ||
+      serialNo.trim() === "";
+  
+    // IMPORTANT
+    if (invalidSerial) {
+      // keep existing report value in edit mode
+      if (isEditing && formData?.mcSerialNo) {
+        setMcSerialNo(formData.mcSerialNo);
+      } else {
+        setMcSerialNo("");
+      }
+  
+      setIsManualSerialNo(true);
+    } else {
+      setMcSerialNo(serialNo);
+      setIsManualSerialNo(false);
+    }
+  }, [equipmentId, equipmentListData]);
   
   useEffect(() => {
     navigation.setOptions({
@@ -795,6 +833,8 @@ export default function ServiceReportFormScreen() {
             onValueChange={(id) => {
               setEquipmentTypeId(id);
               setEquipmentId(""); // reset equipment
+              setMcSerialNo("");
+              setIsManualSerialNo(false);
             }}
             readOnly={readOnly}
           />
@@ -804,12 +844,44 @@ export default function ServiceReportFormScreen() {
             placeholder="Select equipment"
             options={equipmentOptions} // { id, name }
             selectedValue={equipmentId}
-            onValueChange={(id) => setEquipmentId(id)}
+            // onValueChange={(id) => setEquipmentId(id)}
+            onValueChange={(id) => {
+              setEquipmentId(id);
+            
+              const selectedIndex =
+                equipmentListData?.data?.equipmentList?.ids?.findIndex(
+                  (itemId: number) => String(itemId) === id
+                );
+            
+              if (selectedIndex !== -1 && selectedIndex !== undefined) {
+                const serialNo =
+                  equipmentListData?.data?.equipmentList?.serial_no?.[
+                    selectedIndex
+                  ];
+            
+                const invalidSerial =
+                  !serialNo ||
+                  serialNo === "null";
+            
+                setMcSerialNo(invalidSerial ? "" : serialNo);
+            
+                setIsManualSerialNo(invalidSerial);
+              }
+            }}
             readOnly={readOnly}
           />
           
-          <FormInput label="M/C or Serial No *" placeholder="Enter serial number" value={mcSerialNo} onChangeText={setMcSerialNo} editable={!readOnly}
-            selectTextOnFocus={!readOnly} readOnly={readOnly}/>
+          {/* <FormInput label="M/C or Serial No *" placeholder="Enter serial number" value={mcSerialNo} onChangeText={setMcSerialNo} editable={!readOnly}
+            selectTextOnFocus={!readOnly} readOnly={readOnly}/> */}
+            <FormInput
+              label="M/C or Serial No *"
+              placeholder="Enter serial number"
+              value={mcSerialNo}
+              onChangeText={setMcSerialNo}
+              editable={!readOnly && isManualSerialNo}
+              selectTextOnFocus={!readOnly && isManualSerialNo}
+              readOnly={readOnly || !isManualSerialNo}
+            />
           <FormInput label="Hour Meter" placeholder="Enter hour meter reading" value={hourMeter} onChangeText={setHourMeter} keyboardType="numeric" editable={!readOnly}
             selectTextOnFocus={!readOnly} readOnly={readOnly}/>
           <FormInput label="Job No" placeholder="Enter job number" value={jobNo} onChangeText={setJobNo} editable={!readOnly}
