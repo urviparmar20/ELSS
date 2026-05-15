@@ -40,6 +40,8 @@ import { validateForm } from "../utils/validateServiceReport";
 import CustomLoader from "../components/CustomLoader";
 import { useGenerateOTPSR } from "../hooks/useGenerateOTPSR";
 import { useVerifyOTPSR } from "../hooks/useVerifyOTPSR";
+import { downloadRemoteFile } from "../utils/downloadRemoteFile";
+import { ensureFileExists } from "../utils/ensureFileExists";
 
 type ServiceReportFormRouteProp = RouteProp<ReportsStackParamList, "ServiceReportForm">;
 type ReportsNavigationProp = NativeStackNavigationProp<ReportsStackParamList>;
@@ -85,6 +87,9 @@ export default function ServiceReportFormScreen() {
   const [showAlert, setShowAlert] = useState(false);
   const [showVerify, setShowVerify] = useState(false);
 
+  const isDraftLoading = activeAction === "draft";
+  const isSubmitLoading = activeAction === "submit";
+  const isLoading = isDraftLoading || isSubmitLoading;
 
   const [companyOptions, setCompanyOptions] = useState<{ id: string; name: string }[]>([]);
   const [equipmentTypeOptions, setEquipmentTypeOptions] = useState<{ id: string; name: string }[]>([]);
@@ -509,7 +514,7 @@ export default function ServiceReportFormScreen() {
 
   
   const handleSaveAsDraft = async () => {
-    setActiveAction("draft");
+    
 
     const { valid, errors } = validateForm({
       companyId,
@@ -542,8 +547,27 @@ export default function ServiceReportFormScreen() {
       });
       return;
     }
+    setActiveAction("draft");
     try {
-      const formData = buildServiceReportFormData({
+       // 1. normalize URIs
+       let techUri = technicianSignature;
+       let clientUri = clientSignature;
+   
+       // 2. convert remote → local if needed
+       if (techUri?.startsWith("http")) {
+         techUri = await downloadRemoteFile(techUri);
+       }
+   
+       if (clientUri?.startsWith("http")) {
+        clientUri = await downloadRemoteFile(clientUri);
+       }
+   
+       // 3. IMPORTANT: ensure files are ready
+       if (techUri) await ensureFileExists(techUri);
+       if (clientUri) await ensureFileExists(clientUri);
+   
+       // 4. Build FormData (fresh instance always)
+       const payload = buildServiceReportFormData({
         report_id: isEditing ? existingReport.id : 0,
         user_id: userId,
         company_name: companyId,
@@ -568,36 +592,53 @@ export default function ServiceReportFormScreen() {
           repair: repair,
         },
         description: remarks,
-        signature_technician: technicianSignature
-          ? { uri: technicianSignature, name: "technician-signature.jpg", type: "image/jpeg" }
-          : undefined,
-        signature_client: clientSignature
-          ? { uri: clientSignature, name: "client-signature.jpg", type: "image/jpeg" }
-          : undefined,
+        signature_technician:techUri
+        ? { uri: techUri, name: "tech.png", type: "image/png" }
+        : undefined,
+        signature_client: clientUri
+        ? { uri: clientUri, name: "client.png", type: "image/png" }
+        : undefined,
         filled_date: completionDate instanceof Date ? completionDate.toISOString() : completionDate,
         is_chargable: isChargeable === null ? "N" : isChargeable ? "Y" : "N",
         client_name: clientName,
         client_tel_no: clientContactNo,
-      });
-      // console.log("=== FORMDATA START ===");
-      // for (const pair of formData.entries()) {
-      //   console.log(pair[0], pair[1]);
-      // }
-      // console.log("=== FORMDATA END ===");
-      
-      const res = await mutateAsync({ formData, mode: "draft" });
-      if (res) {
-        queryClient.invalidateQueries({
-          queryKey: ["service-reports"],
-        });
-        Toast.show({
-          type: "success",
-          text1: "Success",
-          text2: "Service report saved as draft",
-        });
-        navigation.goBack()
-      }
-
+       });
+   
+       // 5. CRITICAL FIX: clone FormData (prevents RN mutation bug)
+       const safeFormData = new FormData();
+       (payload as any)._parts?.forEach(([k, v]: any) => {
+         safeFormData.append(k, v);
+       });
+   
+       // 6. retry wrapper (prevents first-call network glitch)
+       const uploadWithRetry = async (data: FormData) => {
+         let lastErr;
+   
+         for (let i = 0; i < 3; i++) {
+           try {
+             return await mutateAsync({ formData: data, mode: "draft" });
+           } catch (e) {
+             lastErr = e;
+             await new Promise(r => setTimeout(r, 700));
+           }
+         }
+   
+         throw lastErr;
+       };
+   
+       const res = await uploadWithRetry(safeFormData);
+   
+       if (res?.status_code === 200) {
+         queryClient.invalidateQueries({ queryKey: ["service-reports"] });
+   
+         Toast.show({
+           type: "success",
+           text1: "Success",
+           text2: "Service report saved as draft",
+         });
+   
+         navigation.goBack();
+       }
     } catch (error) {
       console.error("Failed to submit service report:", error);
        Toast.show({
@@ -612,7 +653,6 @@ export default function ServiceReportFormScreen() {
   };
 
   const handleSubmit = async () => {
-    setActiveAction("submit");
 
     const { valid, errors } = validateForm({
       companyId,
@@ -644,64 +684,101 @@ export default function ServiceReportFormScreen() {
       });
       return;
     }
-    try {
-      const formData = buildServiceReportFormData({
-        report_id: isEditing ? existingReport.id : 0,
-        user_id: userId,
-        company_name: companyId,
-        company_address: address,
-        job_no: jobNo,
-        hr_meter: hourMeter,
-        equipment_type: equipmentTypeId,
-        equipment_id: equipmentId,
-        serial_no: mcSerialNo,
-        mc: mcSerialNo,
-        date_list: serviceTimes.map(t => t.date),
-        time_list: {
-          start: serviceTimes.map(t => t.startTime),
-          end: serviceTimes.map(t => t.endTime),
-        },
-        operation_check_list: groupedChecklist,
-        servicing_parts_lubricants_list: servicingPartsLubricants,
-        other_parts_supplied_list: filteredOtherParts,
-        description_status_list: {
-          checking: checking,
-          servicing: servicing,
-          repair: repair,
-        },
-        description: remarks,
-        signature_technician: technicianSignature
-          ? { uri: technicianSignature, name: "technician-signature.jpg", type: "image/jpeg" }
-          : undefined,
-        signature_client: clientSignature
-          ? { uri: clientSignature, name: "client-signature.jpg", type: "image/jpeg" }
-          : undefined,
-        filled_date: completionDate instanceof Date ? completionDate.toISOString() : completionDate,
-        is_chargable: isChargeable === null ? "N" : isChargeable ? "Y" : "N",
-        client_name: clientName,
-        client_tel_no: clientContactNo,
-        // images,
-      });
+    setActiveAction("submit");
 
-      console.log("=== FORMDATA START ===");
-      for (const pair of formData.entries()) {
-        console.log(pair[0], pair[1]);
+    try {
+      // 1. normalize URIs
+      let techUri = technicianSignature;
+      let clientUri = clientSignature;
+  
+      // 2. convert remote → local if needed
+      if (techUri?.startsWith("http")) {
+        techUri = await downloadRemoteFile(techUri);
       }
-      console.log("=== FORMDATA END ===");
-      
-      const res = await mutateAsync({ formData, mode: "submit" });
-      if (res) {
+  
+      if (clientUri?.startsWith("http")) {
+       clientUri = await downloadRemoteFile(clientUri);
+      }
+  
+      // 3. IMPORTANT: ensure files are ready
+      if (techUri) await ensureFileExists(techUri);
+      if (clientUri) await ensureFileExists(clientUri);
+  
+      // 4. Build FormData (fresh instance always)
+      const payload = buildServiceReportFormData({
+       report_id: isEditing ? existingReport.id : 0,
+       user_id: userId,
+       company_name: companyId,
+       company_address: address,
+       job_no: jobNo,
+       hr_meter: hourMeter,
+       equipment_type: equipmentTypeId,
+       equipment_id: equipmentId,
+       serial_no: mcSerialNo,
+       mc: mcSerialNo,
+       date_list: serviceTimes.map(t => t.date),
+       time_list: {
+         start: serviceTimes.map(t => t.startTime),
+         end: serviceTimes.map(t => t.endTime),
+       },
+       operation_check_list: groupedChecklist,
+       servicing_parts_lubricants_list: servicingPartsLubricants,
+       other_parts_supplied_list: filteredOtherParts,
+       description_status_list: {
+         checking: checking,
+         servicing: servicing,
+         repair: repair,
+       },
+       description: remarks,
+       signature_technician:techUri
+       ? { uri: techUri, name: "tech.png", type: "image/png" }
+       : undefined,
+       signature_client: clientUri
+       ? { uri: clientUri, name: "client.png", type: "image/png" }
+       : undefined,
+       filled_date: completionDate instanceof Date ? completionDate.toISOString() : completionDate,
+       is_chargable: isChargeable === null ? "N" : isChargeable ? "Y" : "N",
+       client_name: clientName,
+       client_tel_no: clientContactNo,
+      });
+  
+      // 5. CRITICAL FIX: clone FormData (prevents RN mutation bug)
+      const safeFormData = new FormData();
+      (payload as any)._parts?.forEach(([k, v]: any) => {
+        safeFormData.append(k, v);
+      });
+  
+      // 6. retry wrapper (prevents first-call network glitch)
+      const uploadWithRetry = async (data: FormData) => {
+        let lastErr;
+  
+        for (let i = 0; i < 3; i++) {
+          try {
+            return await mutateAsync({ formData: data, mode: "submit" });
+          } catch (e) {
+            lastErr = e;
+            await new Promise(r => setTimeout(r, 700));
+          }
+        }
+  
+        throw lastErr;
+      };
+  
+      const res = await uploadWithRetry(safeFormData);
+  
+      if (res?.status_code === 200) {
         queryClient.invalidateQueries({
           queryKey: ["service-reports"],
         });
         Toast.show({
           type: "success",
           text1: "Success",
-          text2: "Service report saved successfully.",
+          text2: "Service report saved successfully",
         });
-        navigation.goBack()
+  
+        navigation.goBack();
       }
-    } catch (error) {
+   } catch (error) {
       console.error("Failed to submit service report:", error);
        Toast.show({
         type: "error",
@@ -1271,19 +1348,32 @@ export default function ServiceReportFormScreen() {
         {/* Buttons */}
         {!readOnly && (
           <View style={[styles.buttonContainer, { paddingBottom: insets.bottom + 100 }]}>
-            <CustomButton 
+            {/* <CustomButton 
               onPress={handleSaveAsDraft}
               disabled={
                 isSubmitted || (isPending && activeAction !== "draft")
               }
+
               style={[styles.draftButton, { backgroundColor: colors.secondary }]}>
               {isSubmitted
                 ? "Draft Disabled"
                 : activeAction === "draft" && isPending
                   ? <CustomLoader color="#fff" />
                   : "Save as Draft"}
+
+            </CustomButton> */}
+            <CustomButton
+              onPress={handleSaveAsDraft}
+              disabled={isLoading || isSubmitted}
+              style={[styles.draftButton, { backgroundColor: colors.secondary }]}
+            >
+              {isDraftLoading
+                ? <CustomLoader color="#fff" />
+                : isSubmitted
+                  ? "Draft Disabled"
+                  : "Save as Draft"}
             </CustomButton>
-            <CustomButton 
+            {/* <CustomButton 
               disabled={isPending && activeAction !== "submit"}
               onPress={handleSubmit} 
               style={[styles.submitButton, { backgroundColor: colors.primary }]}>
@@ -1292,6 +1382,17 @@ export default function ServiceReportFormScreen() {
                   : isEditing
                     ? "Update Report"
                     : "Submit Report"}
+            </CustomButton> */}
+            <CustomButton
+              onPress={handleSubmit}
+              disabled={isLoading}
+              style={[styles.submitButton, { backgroundColor: colors.primary }]}
+            >
+              {isSubmitLoading
+                ? <CustomLoader color="#fff" />
+                : isEditing
+                  ? "Update Report"
+                  : "Submit Report"}
             </CustomButton>
           </View>
         )}

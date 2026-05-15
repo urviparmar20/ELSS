@@ -36,7 +36,9 @@ import { mapRawGM } from "../utils/mapRawGM";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { EQUIPMENT_TYPES } from "../constants/equipment";
 import CheckListAPKL from "../components/CheckListAPKL";
-
+import * as FileSystem from "expo-file-system/legacy";
+import { downloadRemoteFile } from "../utils/downloadRemoteFile";
+import { ensureFileExists } from "../utils/ensureFileExists";
 
 type MaintenanceFormRouteProp = RouteProp<MaintenanceStackParamList, "GMForm">;
 type MaintenanceNavigationProp = NativeStackNavigationProp<MaintenanceStackParamList>;
@@ -569,12 +571,9 @@ export default function MaintenanceFormScreen() {
       supervisorSignature,
       serviceDepartment,
       contactPerson,
-      contactNo, 
-
-      // checklist,
-      // services
+      contactNo,
     });
-    
+  
     if (!valid) {
       Toast.show({
         type: "error",
@@ -584,13 +583,31 @@ export default function MaintenanceFormScreen() {
       setActiveAction(null);
       return;
     }
-    
+  
     try {
       const isAPOrForklift =
-      equipmentTypeId === EQUIPMENT_TYPES.AP ||
-      equipmentTypeId === EQUIPMENT_TYPES.FORKLIFT;
-
-      const formData = buildGMFormData({
+        equipmentTypeId === EQUIPMENT_TYPES.AP ||
+        equipmentTypeId === EQUIPMENT_TYPES.FORKLIFT;
+  
+      // 1. normalize URIs
+      let techUri = technicianSignature;
+      let supUri = supervisorSignature;
+  
+      // 2. convert remote → local if needed
+      if (techUri?.startsWith("http")) {
+        techUri = await downloadRemoteFile(techUri);
+      }
+  
+      if (supUri?.startsWith("http")) {
+        supUri = await downloadRemoteFile(supUri);
+      }
+  
+      // 3. IMPORTANT: ensure files are ready
+      if (techUri) await ensureFileExists(techUri);
+      if (supUri) await ensureFileExists(supUri);
+  
+      // 4. Build FormData (fresh instance always)
+      const payload = buildGMFormData({
         maintenance_id: isEditing ? existingReport.id : 0,
         company_name: companyId,
         email,
@@ -604,7 +621,7 @@ export default function MaintenanceFormScreen() {
         serial_no: mcSerialNo,
         mc: mcSerialNo,
         remarks,
-        services: selectedServices.length > 0 ? selectedServices : undefined,
+        services: selectedServices.length ? selectedServices : undefined,
         technician: String(userId),
         client_name: clientName,
         client_tel_no: clientContactNo,
@@ -617,56 +634,78 @@ export default function MaintenanceFormScreen() {
         job_descriptions: remarks,
         servicing_parts_lubricants_list: servicingPartsLubricants,
         other_parts_supplied_list: otherPart,
-        signature_technician: technicianSignature
-          ? { uri: technicianSignature, name: "technician-signature.jpg", type: "image/jpeg" }
+  
+        signature_technician: techUri
+          ? { uri: techUri, name: "tech.png", type: "image/png" }
           : undefined,
-        signature_supervisor: supervisorSignature
-          ? { uri: supervisorSignature, name: "client-signature.jpg", type: "image/jpeg" }
+  
+        signature_supervisor: supUri
+          ? { uri: supUri, name: "sup.png", type: "image/png" }
           : undefined,
+  
         service_department: serviceDepartment,
-        current_date: completionDate instanceof Date ? completionDate.toISOString() : completionDate,
-        checklist: isAPOrForklift
-          ? finalChecklistPayload
-          : undefined,
-
-        operation_check_list: !isAPOrForklift &&
-        Object.keys(checklist).length > 0
-          ? checklist
-          : undefined,
-
+        current_date:
+          completionDate instanceof Date
+            ? completionDate.toISOString()
+            : completionDate,
+  
+        checklist: isAPOrForklift ? finalChecklistPayload : undefined,
+  
+        operation_check_list:
+          !isAPOrForklift && Object.keys(checklist).length
+            ? checklist
+            : undefined,
+  
         is_otp_verified: "Y",
         is_pending: action === "draft" ? "Y" : "N",
-        frequency: selectedServiceType ? selectedServiceType : undefined
+        frequency: selectedServiceType || undefined,
       });
-
-      // console.log("=== FORMDATA START ===");
-      // for (const pair of formData.entries()) {
-      //   console.log(pair[0], pair[1]);
-      // }
-      // console.log("=== FORMDATA END ===");
-     
-
-      const res = await mutateAsync({ formData});
+  
+      // 5. CRITICAL FIX: clone FormData (prevents RN mutation bug)
+      const safeFormData = new FormData();
+      (payload as any)._parts?.forEach(([k, v]: any) => {
+        safeFormData.append(k, v);
+      });
+  
+      // 6. retry wrapper (prevents first-call network glitch)
+      const uploadWithRetry = async (data: FormData) => {
+        let lastErr;
+  
+        for (let i = 0; i < 3; i++) {
+          try {
+            return await mutateAsync({ formData: data });
+          } catch (e) {
+            lastErr = e;
+            await new Promise(r => setTimeout(r, 700));
+          }
+        }
+  
+        throw lastErr;
+      };
+  
+      const res = await uploadWithRetry(safeFormData);
+  
       if (res?.status_code === 200) {
-        queryClient.invalidateQueries({
-          queryKey: ["general-maintenance"],
-        });
+        queryClient.invalidateQueries({ queryKey: ["general-maintenance"] });
+  
         Toast.show({
           type: "success",
           text1: "Success",
           text2: action === "draft" ? "Draft Saved" : "Submitted Successfully",
-
         });
-        navigation.goBack()
+  
+        navigation.goBack();
       }
     } catch (error) {
-      console.error("Failed to submit General maintenace:", error);
-       Toast.show({
+      console.log("SUBMIT ERROR:", error);
+  
+      Toast.show({
         type: "error",
         text1: "Error",
-        text2: "Failed to submit General maintenace",
+        text2: "Failed to submit General maintenance",
       });
-      
+    } finally {
+      setActiveAction(null);
     }
   };
   return (
