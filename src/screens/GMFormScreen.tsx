@@ -143,6 +143,11 @@ export default function MaintenanceFormScreen() {
   const [activeEndPickerIndex, setActiveEndPickerIndex] =
   useState<number | null>(null);
 
+
+  const isDraftLoading = activeAction === "draft";
+  const isSubmitLoading = activeAction === "submit";
+  const isLoading = isDraftLoading || isSubmitLoading;
+
   const { data: companyData } = useCompanies();
   const { data: eqTypeData } = useEquipmentTypeList();
   const { data: equipmentListData } = useEquipmentListByType(equipmentTypeId);
@@ -666,6 +671,8 @@ export default function MaintenanceFormScreen() {
       (payload as any)._parts?.forEach(([k, v]: any) => {
         safeFormData.append(k, v);
       });
+      console.log('data',safeFormData);
+      
   
       // 6. retry wrapper (prevents first-call network glitch)
       const uploadWithRetry = async (data: FormData) => {
@@ -696,13 +703,26 @@ export default function MaintenanceFormScreen() {
   
         navigation.goBack();
       }
-    } catch (error) {
+    } catch (error: any) {
       console.log("SUBMIT ERROR:", error);
-  
+    
+      let errorMessage = "Something went wrong";
+    
+      try {
+        const match = error?.message?.match(/\{.*\}/);
+    
+        if (match) {
+          const parsed = JSON.parse(match[0]);
+          errorMessage = parsed?.message || errorMessage;
+        }
+      } catch (e) {
+        console.log("PARSE ERROR:", e);
+      }
+    
       Toast.show({
         type: "error",
         text1: "Error",
-        text2: "Failed to submit General maintenance",
+        text2: errorMessage,
       });
     } finally {
       setActiveAction(null);
@@ -1134,7 +1154,7 @@ export default function MaintenanceFormScreen() {
 
         {!readOnly && (
         <View style={[styles.buttonContainer, { paddingBottom: insets.bottom + 100 }]}>
-          <CustomButton 
+          {/* <CustomButton 
             onPress={() => handleFormSubmit("draft")}
             disabled={
               isSubmitted || (isPending && activeAction !== "draft")
@@ -1145,8 +1165,20 @@ export default function MaintenanceFormScreen() {
               : activeAction === "draft" && isPending
                 ? <CustomLoader color="#fff" />
                 : "Save as Draft"}
-          </CustomButton>
-          <CustomButton 
+          </CustomButton> */}
+
+          <CustomButton
+              onPress={() => handleFormSubmit("draft")}
+              disabled={isLoading || isSubmitted}
+              style={[styles.draftButton, { backgroundColor: colors.secondary }]}
+            >
+              {isDraftLoading
+                ? <CustomLoader color="#fff" />
+                : isSubmitted
+                  ? "Draft Disabled"
+                  : "Save as Draft"}
+            </CustomButton>
+          {/* <CustomButton 
             disabled={isPending && activeAction !== "submit"}
             onPress={() => handleFormSubmit("submit")} 
             style={[styles.submitButton, { backgroundColor: colors.primary }]}>
@@ -1155,7 +1187,18 @@ export default function MaintenanceFormScreen() {
                 : isEditing
                   ? "Update"
                   : "Submit"}
-          </CustomButton>
+          </CustomButton> */}
+          <CustomButton
+              onPress={() => handleFormSubmit("submit")}
+              disabled={isLoading}
+              style={[styles.submitButton, { backgroundColor: colors.primary }]}
+            >
+              {isSubmitLoading
+                ? <CustomLoader color="#fff" />
+                : isEditing
+                  ? "Update"
+                  : "Submit"}
+            </CustomButton>
         </View>
         )}
       </KeyboardAwareScrollViewCompat>

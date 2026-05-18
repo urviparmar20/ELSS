@@ -30,6 +30,7 @@ export const validateForm = (params: ValidateFormParams): { valid: boolean; erro
   } = params;
 
   // const checklistValues = Object.values(params.checklist || {});
+  const phone = clientContactNo.trim();
 
   // ---- COMMON ----
   if (!companyId) errors.push("Company is required");
@@ -43,7 +44,18 @@ export const validateForm = (params: ValidateFormParams): { valid: boolean; erro
   if (!equipmentTypeId) errors.push("Equipment type is required");
   if (!equipmentId) errors.push("Equipment ID is required");
   if (!clientName.trim()) errors.push("Client name is required");
-  if (!clientContactNo.trim()) errors.push("Client contact number is required");
+  if (!phone) errors.push("Client contact number is required");
+  
+
+  // must be digits only
+  if (phone && !/^\d+$/.test(phone)) {
+    errors.push("Client contact number must contain only digits");
+  }
+  
+  // length must be 8–10
+  if (phone && (phone.length < 8 || phone.length > 10)) {
+    errors.push("Client contact number must be between 8 and 10 digits");
+  }
 
   // --------------------
   // SERVICES (Weekly / Monthly / etc.)

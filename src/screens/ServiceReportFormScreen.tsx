@@ -639,12 +639,35 @@ export default function ServiceReportFormScreen() {
    
          navigation.goBack();
        }
-    } catch (error) {
-      console.error("Failed to submit service report:", error);
-       Toast.show({
+    } 
+    // catch (error) {
+    //   console.error("Failed to submit service report:", error);
+    //    Toast.show({
+    //     type: "error",
+    //     text1: "Error",
+    //     text2: "Failed to draft report",
+    //   });
+    // }
+    catch (error: any) {
+      console.log("draft ERROR:", error);
+    
+      let errorMessage = "Something went wrong";
+    
+      try {
+        const match = error?.message?.match(/\{.*\}/);
+    
+        if (match) {
+          const parsed = JSON.parse(match[0]);
+          errorMessage = parsed?.message || errorMessage;
+        }
+      } catch (e) {
+        console.log("PARSE ERROR:", e);
+      }
+    
+      Toast.show({
         type: "error",
         text1: "Error",
-        text2: "Failed to draft report",
+        text2: errorMessage,
       });
     }
     finally {
@@ -778,12 +801,35 @@ export default function ServiceReportFormScreen() {
   
         navigation.goBack();
       }
-   } catch (error) {
-      console.error("Failed to submit service report:", error);
-       Toast.show({
+   }
+    // catch (error) {
+    //   console.error("Failed to submit service report:", error);
+    //    Toast.show({
+    //     type: "error",
+    //     text1: "Error",
+    //     text2: "Failed to save report",
+    //   });
+    // }
+    catch (error: any) {
+      console.log("SUBMIT ERROR:", error);
+    
+      let errorMessage = "Something went wrong";
+    
+      try {
+        const match = error?.message?.match(/\{.*\}/);
+    
+        if (match) {
+          const parsed = JSON.parse(match[0]);
+          errorMessage = parsed?.message || errorMessage;
+        }
+      } catch (e) {
+        console.log("PARSE ERROR:", e);
+      }
+    
+      Toast.show({
         type: "error",
         text1: "Error",
-        text2: "Failed to save report",
+        text2: errorMessage,
       });
     }
     finally {
