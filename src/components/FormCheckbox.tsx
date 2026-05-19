@@ -17,7 +17,10 @@ export function FormCheckbox({ label, checked, onChange, readOnly = false }: For
   const colors = isDark ? Colors.dark : Colors.light;
 
   return (
-    <Pressable style={styles.container} onPress={() => {
+    <Pressable style={[
+      styles.container,
+      readOnly && styles.disabledContainer
+    ]} onPress={() => {
       if (!readOnly) {
         onChange(!checked);
       }
@@ -56,4 +59,7 @@ const styles = StyleSheet.create({
     marginRight: Spacing.md,
   },
   label: {},
+  disabledContainer: {
+    opacity: 0.5,
+  },
 });

@@ -32,8 +32,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "44f627a7-023c-4938-a281-ba5caf6fb95e"
+        "projectId": "719b627c-7d69-4248-a346-269c56d1f190"
       }
-    }
+    },
+    "owner": "urviexpo"
   }
 }

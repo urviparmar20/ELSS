@@ -58,8 +58,8 @@ const DEFAULT_PARTS_LUBRICANTS: PartsLubricants = {
 
 const SERVICE_REVERSE_MAP: Record<string, keyof typeof services> = {
   "Weekly Checking": "weeklyChecking",
-  "Monthly Servicing": "monthlyServicing",
-  "Half Yearly Servicing": "halfYearlyServicing",
+  "Monthly": "monthlyServicing",
+  "Half Yearly": "halfYearlyServicing",
   "Yearly Servicing": "yearlyServicing",
   "Washing": "washing",
   "Cleaning": "cleaning",
@@ -97,7 +97,7 @@ export default function MaintenanceFormScreen() {
   const [jobNo, setJobNo] = useState(formData?.jobNo || "");
   const [address, setAddress] = useState(formData?.address || "");
   const [otherPart, setOtherPart] = useState(formData?.otherPartsSupplied || "");
-
+  const [isAutoSerialNo, setIsAutoSerialNo] = useState(false);
   const [contactPerson, setContactPerson] = useState(formData?.contactPerson || "");
   const [contactNo, setContactNo] = useState(formData?.contactNo || "");
   const [email, setEmail] = useState(formData?.email || "");
@@ -225,11 +225,36 @@ export default function MaintenanceFormScreen() {
       sr.toLowerCase() !== "null"
     ) {
       setMcSerialNo(sr);
+      setIsAutoSerialNo(true); // disable editing
     } else {
       // allow manual entry
       setMcSerialNo("");
+      setIsAutoSerialNo(false); // enable editing
     }
   };
+  // const handleEquipmentChange = (id: string) => {
+  //   setEquipmentId(id);
+  
+  //   const selectedEquipment = equipmentOptions.find(
+  //     item => item.id === id
+  //   );
+  
+  //   if (!selectedEquipment) return;
+  
+  //   const sr = selectedEquipment.serialNo;
+  
+  //   // auto fill only if valid
+  //   if (
+  //     sr &&
+  //     sr.trim() !== "" &&
+  //     sr.toLowerCase() !== "null"
+  //   ) {
+  //     setMcSerialNo(sr);
+  //   } else {
+  //     // allow manual entry
+  //     setMcSerialNo("");
+  //   }
+  // };
   //frequency
   useEffect(() => {
     if (!isEditing) return;
@@ -422,6 +447,22 @@ export default function MaintenanceFormScreen() {
   
     setChecklist(newChecklist);
   };
+  useEffect(() => {
+    if (mcSerialNo && equipmentId) {
+      const selectedEquipment = equipmentOptions.find(
+        item => item.id === equipmentId
+      );
+  
+      if (
+        selectedEquipment?.serialNo &&
+        selectedEquipment.serialNo === mcSerialNo
+      ) {
+        setIsAutoSerialNo(true);
+      } else {
+        setIsAutoSerialNo(false);
+      }
+    }
+  }, [mcSerialNo, equipmentId, equipmentOptions]);
 
 
   const isAllChecklistSelected = checklistData?.data
@@ -543,8 +584,8 @@ export default function MaintenanceFormScreen() {
    const getSelectedServices = (): string[] => {
     const SERVICE_LABELS: Record<string, string> = {
       weeklyChecking: "Weekly Checking",
-      monthlyServicing: "Monthly Servicing",
-      halfYearlyServicing: "Half Yearly Servicing",
+      monthlyServicing: "Monthly",
+      halfYearlyServicing: "Half Yearly",
       yearlyServicing: "Yearly Servicing",
       washing: "Washing",
       cleaning: "Cleaning",
@@ -626,7 +667,10 @@ export default function MaintenanceFormScreen() {
         serial_no: mcSerialNo,
         mc: mcSerialNo,
         remarks,
-        services: selectedServices.length ? selectedServices : undefined,
+        // services: selectedServices.length ? selectedServices : undefined,
+        services: !isAPOrForklift && selectedServices.length
+          ? selectedServices
+          : undefined,
         technician: String(userId),
         client_name: clientName,
         client_tel_no: clientContactNo,
@@ -663,15 +707,19 @@ export default function MaintenanceFormScreen() {
   
         is_otp_verified: "Y",
         is_pending: action === "draft" ? "Y" : "N",
-        frequency: selectedServiceType || undefined,
+        // frequency: selectedServiceType || undefined,
+        frequency: isAPOrForklift
+          ? selectedServiceType || undefined
+          : undefined,
       });
   
       // 5. CRITICAL FIX: clone FormData (prevents RN mutation bug)
       const safeFormData = new FormData();
       (payload as any)._parts?.forEach(([k, v]: any) => {
+        console.log('data',k,v);
+
         safeFormData.append(k, v);
       });
-      console.log('data',safeFormData);
       
   
       // 6. retry wrapper (prevents first-call network glitch)
@@ -778,7 +826,16 @@ export default function MaintenanceFormScreen() {
             readOnly={readOnly || isEditing}
           />
 
-          <FormInput label="M/C or Serial No *" placeholder="Enter serial number" value={mcSerialNo} onChangeText={setMcSerialNo} editable={!readOnly && !isEditing} selectTextOnFocus={!readOnly && !isEditing} readOnly={readOnly || isEditing}/>
+          {/* <FormInput label="M/C or Serial No *" placeholder="Enter serial number" value={mcSerialNo} onChangeText={setMcSerialNo} editable={!readOnly && !isEditing} selectTextOnFocus={!readOnly && !isEditing} readOnly={readOnly || isEditing}/> */}
+          <FormInput
+  label="M/C or Serial No *"
+  placeholder="Enter serial number"
+  value={mcSerialNo}
+  onChangeText={setMcSerialNo}
+  editable={!readOnly && !isAutoSerialNo}
+  selectTextOnFocus={!readOnly && !isAutoSerialNo}
+  readOnly={readOnly || isAutoSerialNo}
+/>
           <FormInput label="Hour Meter" placeholder="Enter hour meter reading" value={hourMeter} onChangeText={setHourMeter} keyboardType="numeric" editable={!readOnly && !isEditing} selectTextOnFocus={!readOnly && !isEditing} readOnly={readOnly || isEditing}/>
           <FormInput label="Job No" placeholder="Enter job number" value={jobNo} onChangeText={setJobNo} editable={!readOnly && !isEditing} selectTextOnFocus={!readOnly && !isEditing} readOnly={readOnly || isEditing}/>
           
@@ -981,29 +1038,29 @@ export default function MaintenanceFormScreen() {
                   onChange={(val) =>
                     setServices(prev => ({ ...prev, weeklyChecking: val }))
                   }
-                  readOnly={readOnly}
+                  readOnly={readOnly || isEditing}
                 />
               </View>
 
               <View style={styles.inputHalf}>
                 <FormCheckbox
-                  label="Monthly Servicing"
+                  label="Monthly"
                   checked={services.monthlyServicing}
                   onChange={(val) =>
                     setServices(prev => ({ ...prev, monthlyServicing: val }))
                   }
-                  readOnly={readOnly}
+                  readOnly={readOnly || isEditing}
                 />
               </View>
 
               <View style={styles.inputHalf}>
                 <FormCheckbox
-                  label="Half Yearly Servicing"
+                  label="Half Yearly"
                   checked={services.halfYearlyServicing}
                   onChange={(val) =>
                     setServices(prev => ({ ...prev, halfYearlyServicing: val }))
                   }
-                  readOnly={readOnly}
+                  readOnly={readOnly || isEditing}
                 />
               </View>
 
@@ -1014,7 +1071,7 @@ export default function MaintenanceFormScreen() {
                   onChange={(val) =>
                     setServices(prev => ({ ...prev, yearlyServicing: val }))
                   }
-                  readOnly={readOnly}
+                  readOnly={readOnly || isEditing}
                 />
               </View>
 
@@ -1025,7 +1082,7 @@ export default function MaintenanceFormScreen() {
                   onChange={(val) =>
                     setServices(prev => ({ ...prev, washing: val }))
                   }
-                  readOnly={readOnly}
+                  readOnly={readOnly || isEditing}
                 />
               </View>
 
@@ -1036,7 +1093,7 @@ export default function MaintenanceFormScreen() {
                   onChange={(val) =>
                     setServices(prev => ({ ...prev, cleaning: val }))
                   }
-                  readOnly={readOnly}
+                  readOnly={readOnly || isEditing}
                 />
               </View>
             </View>
@@ -1080,7 +1137,7 @@ export default function MaintenanceFormScreen() {
                     opacity: readOnly ? 0.6 : 1,
                   },
                 ]}
-                disabled={readOnly}
+                disabled={readOnly || isEditing}
                 onPress={handleSelectAllChecklist}>
                 <Feather name={isAllChecklistSelected ? "check-square" : "square"} size={16} color={colors.primary} />
                 <ThemedText type="small" style={{ color: colors.primary, marginLeft: Spacing.xs }}>
@@ -1101,7 +1158,7 @@ export default function MaintenanceFormScreen() {
                       label={`${index + 1}. ${item.replace(/_/g, " ")}`}
                       checked={checklist[item] || false}
                       onChange={(checked) => handleChecklistChange(item, checked)}
-                      readOnly={readOnly}
+                      readOnly={readOnly || isEditing}
                     />
                   ))}
                 </View>

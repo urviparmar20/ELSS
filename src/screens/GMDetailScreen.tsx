@@ -62,15 +62,28 @@ export default function GMDetailScreen() {
       ? colors.warning
       : colors.success;
 
-      const selectedServices = existingReport?.frequency ? existingReport.frequency
-      : Object.entries(existingReport.job_list)
-      .filter(([_, value]) => value === true)
-      .map(([key]) =>
-        key
-          .replaceAll("_", " ")
-          .replace(/\b\w/g, (c) => c.toUpperCase())
-      )
-      .join(", ")
+      const selectedServices =
+        existingReport?.services?.length > 0
+        ? existingReport.services.join(", ")
+        : existingReport?.frequency
+        ? existingReport.frequency
+        : Object.entries(existingReport?.job_list || {})
+            .filter(([_, value]) => value === true)
+            .map(([key]) =>
+              key
+                .replaceAll("_", " ")
+                .replace(/\b\w/g, (c) => c.toUpperCase())
+            )
+            .join(", ");
+      // const selectedServices = existingReport?.frequency ? existingReport.frequency
+      // : Object.entries(existingReport.job_list)
+      // .filter(([_, value]) => value === true)
+      // .map(([key]) =>
+      //   key
+      //     .replaceAll("_", " ")
+      //     .replace(/\b\w/g, (c) => c.toUpperCase())
+      // )
+      // .join(", ")
 
   const formatDate = (date?: string) => {
     if (!date) return "-";
@@ -238,7 +251,7 @@ export default function GMDetailScreen() {
           value={selectedServices || "-"}
         />
 
-<View style={styles.detailItem}>
+    <View style={styles.detailItem}>
           <ThemedText
             type="small"
             style={{
