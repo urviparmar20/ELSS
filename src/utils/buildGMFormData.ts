@@ -52,6 +52,16 @@ export const buildGMFormData = (
 
   formData.append("other_parts_supplied_list", params.other_parts_supplied_list);
 
+  if(params.images){
+    params.images.forEach((img, i) => {
+      formData.append("images[]", {
+        uri: img.uri,
+        name: img.name ?? `image_${i}.jpg`,
+        type: img.type ?? "image/jpeg",
+      } as any);
+    });
+  }
+  
   if (params.signature_technician) {
     formData.append("signature_technician", {
       uri: params.signature_technician.uri,

@@ -25,6 +25,7 @@ import {
 
 import type { ReportsStackParamList } from "../navigation/ReportsStackNavigator";
 import { Feather } from "@expo/vector-icons";
+import { Image } from "expo-image";
 
 type ServiceReportFormRouteProp = RouteProp<
   ReportsStackParamList,
@@ -45,7 +46,6 @@ export default function SRDetailScreen() {
   const colors = Colors.light;
 
   const report = existingReport?.raw || existingReport;
-console.log('report',report);
 
   useEffect(() => {
     navigation.setOptions({
@@ -300,6 +300,38 @@ console.log('report',report);
         </ThemedText>
       </Card>
 
+      {/* IMAGES */}
+      <Card style={styles.card}>
+        <ThemedText
+          type="h3"
+          style={styles.sectionTitle}
+        >
+          Images
+        </ThemedText>
+
+        <View style={styles.imagesContainer}>
+          {Array.isArray(report.images) && report.images.length > 0 ? (
+            report.images.map((img: any, index: number) => {
+              const imageUri =
+                typeof img === "string"
+                  ? img
+                  : img?.uri || img?.image || img?.url;
+
+              return (
+                <Image
+                  key={index}
+                  source={{ uri: imageUri }}
+                  style={styles.reportImage}
+                  contentFit="cover"
+                />
+              );
+            })
+          ) : (
+            <ThemedText type="body">-</ThemedText>
+          )}
+        </View>
+      </Card>
+
       {/* SERVICE INFO */}
       <Card style={styles.card}>
         <ThemedText
@@ -338,7 +370,7 @@ console.log('report',report);
             onPress={() =>
               navigation.navigate("ServiceReportForm", {
                 report: existingReport,
-                sr_id: existingReport.sr_id,
+                sr_id: existingReport.raw.sr_id,
                 readOnly: false,
               })
             }
@@ -453,5 +485,17 @@ const styles = StyleSheet.create({
   scheduleDate: {
     fontWeight: "600",
     marginBottom: 4,
+  },
+  imagesContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginTop: 10,
+  },
+  
+  reportImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 8,
   },
 });

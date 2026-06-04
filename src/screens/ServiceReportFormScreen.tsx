@@ -45,16 +45,16 @@ import { ensureFileExists } from "../utils/ensureFileExists";
 
 type ServiceReportFormRouteProp = RouteProp<ReportsStackParamList, "ServiceReportForm">;
 type ReportsNavigationProp = NativeStackNavigationProp<ReportsStackParamList>;
-// type RNImage = {
-//   uri: string;
-//   name: string;
-//   type: string;
-//   size?: number;
-//   isExisting?: boolean;
-// };
-// const MAX_IMAGES = 4;
-// const MAX_IMAGE_SIZE_MB = 3;
-// const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024;
+type RNImage = {
+  uri: string;
+  name: string;
+  type: string;
+  size?: number;
+  isExisting?: boolean;
+};
+const MAX_IMAGES = 4;
+const MAX_IMAGE_SIZE_MB = 3;
+const MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024;
 
 export default function ServiceReportFormScreen() {
   const insets = useSafeAreaInsets();
@@ -145,7 +145,7 @@ export default function ServiceReportFormScreen() {
   
 
 
-  // const [images, setImages] = useState<RNImage[]>(formData?.images || []);
+  const [images, setImages] = useState<RNImage[]>(formData?.images || []);
 
 
   const { data: companyData } = useCompanies();
@@ -291,7 +291,7 @@ export default function ServiceReportFormScreen() {
       setIsManualSerialNo(false);
     }
   }, [equipmentId, equipmentListData]);
-  
+
   useEffect(() => {
     navigation.setOptions({
       headerTitle: readOnly || isEditing ? srId : "New Service Report",
@@ -386,93 +386,95 @@ export default function ServiceReportFormScreen() {
     setPartsLubricants((prev) => ({ ...prev, [field]: value }));
   };
 
-  // const pickImage = async () => {
-  //   if (images.length >= MAX_IMAGES) {
-  //     Toast.show({
-  //       type: "error",
-  //       text1: "Image Limit",
-  //       text2: "You can upload a maximum of 4 images",
-  //     });
-  //     return;
-  //   }
-  //   const { status } =
-  //     await ImagePicker.requestMediaLibraryPermissionsAsync();
-  //   if (status !== "granted") return;
+  const pickImage = async () => {
+    if (images.length >= MAX_IMAGES) {
+      Toast.show({
+        type: "error",
+        text1: "Image Limit",
+        text2: "You can upload a maximum of 4 images",
+      });
+      return;
+    }
+    const { status } =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") return;
 
-  //   const res = await ImagePicker.launchImageLibraryAsync({
-  //     allowsMultipleSelection: true,
-  //     quality: 0.8,
-  //   });
+    const res = await ImagePicker.launchImageLibraryAsync({
+      allowsMultipleSelection: true,
+      quality: 0.8,
+    });
 
-  //   if (!res.canceled) {
-  //     const remainingSlots = MAX_IMAGES - images.length;
+    if (!res.canceled) {
+      const remainingSlots = MAX_IMAGES - images.length;
   
-  //     const validImages = res.assets
-  //       .slice(0, remainingSlots)
-  //       .filter((a) => {
-  //         if (a.fileSize && a.fileSize > MAX_IMAGE_SIZE_BYTES) {
-  //           Toast.show({
-  //             type: "error",
-  //             text1: "Image Too Large",
-  //             text2: "Each image must be 3 MB or less",
-  //           });
-  //           return false;
-  //         }
-  //         return true;
-  //       })
-  //       .map((a) => ({
-  //         uri: a.uri,
-  //         name: a.fileName ?? `img_${Date.now()}.jpg`,
-  //         type: a.mimeType ?? "image/jpeg",
-  //         size: a.fileSize,
-  //       }));
+      const validImages = res.assets
+        .slice(0, remainingSlots)
+        .filter((a) => {
+          if (a.fileSize && a.fileSize > MAX_IMAGE_SIZE_BYTES) {
+            Toast.show({
+              type: "error",
+              text1: "Image Too Large",
+              text2: "Each image must be 3 MB or less",
+            });
+            return false;
+          }
+          return true;
+        })
+        .map((a) => ({
+          uri: a.uri,
+          name: a.fileName ?? `img_${Date.now()}.jpg`,
+          type: a.mimeType ?? "image/jpeg",
+          size: a.fileSize,
+        }));
   
-  //     setImages((prev) => [...prev, ...validImages]);
-  //   }
-  // };
+      setImages((prev) => [...prev, ...validImages]);
+    }
+  };
 
-  // const takePhoto = async () => {
-  //   if (images.length >= MAX_IMAGES) {
-  //     Toast.show({
-  //       type: "error",
-  //       text1: "Image Limit",
-  //       text2: "You can upload a maximum of 4 images",
-  //     });
-  //     return;
-  //   }
-  //   const { status } =
-  //     await ImagePicker.requestCameraPermissionsAsync();
-  //   if (status !== "granted") return;
+  const takePhoto = async () => {
+    if (images.length >= MAX_IMAGES) {
+      Toast.show({
+        type: "error",
+        text1: "Image Limit",
+        text2: "You can upload a maximum of 4 images",
+      });
+      return;
+    }
+    const { status } =
+      await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== "granted") return;
 
-  //   const res = await ImagePicker.launchCameraAsync({ quality: 0.8 });
-  //   if (!res.canceled) {
-  //     const a = res.assets[0];
+    const res = await ImagePicker.launchCameraAsync({ quality: 0.8 });
+    if (!res.canceled) {
+      const a = res.assets[0];
   
-  //     if (a.fileSize && a.fileSize > MAX_IMAGE_SIZE_BYTES) {
-  //       Toast.show({
-  //         type: "error",
-  //         text1: "Image Too Large",
-  //         text2: "Each image must be 3 MB or less",
-  //       });
-  //       return;
-  //     }
+      if (a.fileSize && a.fileSize > MAX_IMAGE_SIZE_BYTES) {
+        Toast.show({
+          type: "error",
+          text1: "Image Too Large",
+          text2: "Each image must be 3 MB or less",
+        });
+        return;
+      }
   
-  //     setImages((prev) => [
-  //       ...prev,
-  //       {
-  //         uri: a.uri,
-  //         name: a.fileName ?? `photo_${Date.now()}.jpg`,
-  //         type: a.mimeType ?? "image/jpeg",
-  //         size: a.fileSize,
-  //       },
-  //     ]);
-  //   }
-  // };
+      setImages((prev) => [
+        ...prev,
+        {
+          uri: a.uri,
+          name: a.fileName ?? `photo_${Date.now()}.jpg`,
+          type: a.mimeType ?? "image/jpeg",
+          size: a.fileSize,
+        },
+      ]);
+    }
+  };
 
 
-  // const removeImage = (index: number) => {
-  //   setImages((prev) => prev.filter((_, i) => i !== index));
-  // };
+  const removeImage = (index: number) => {
+    setImages((prev) => prev.filter((_, i) => i !== index));
+  };
+  // console.log('images', images);
+  
 
 
   // Dynamically map API checklist to your state
@@ -602,13 +604,14 @@ export default function ServiceReportFormScreen() {
         is_chargable: isChargeable === null ? "N" : isChargeable ? "Y" : "N",
         client_name: clientName,
         client_tel_no: clientContactNo,
+        images: images
        });
    
        // 5. CRITICAL FIX: clone FormData (prevents RN mutation bug)
        const safeFormData = new FormData();
        (payload as any)._parts?.forEach(([k, v]: any) => {
          safeFormData.append(k, v);
-       });
+      });
    
        // 6. retry wrapper (prevents first-call network glitch)
        const uploadWithRetry = async (data: FormData) => {
@@ -636,8 +639,9 @@ export default function ServiceReportFormScreen() {
            text1: "Success",
            text2: "Service report saved as draft",
          });
-   
-         navigation.goBack();
+         navigation.navigate("ServiceReportsList");
+
+        //  navigation.goBack();
        }
     } 
     // catch (error) {
@@ -763,6 +767,7 @@ export default function ServiceReportFormScreen() {
        is_chargable: isChargeable === null ? "N" : isChargeable ? "Y" : "N",
        client_name: clientName,
        client_tel_no: clientContactNo,
+       images: images
       });
   
       // 5. CRITICAL FIX: clone FormData (prevents RN mutation bug)
@@ -798,8 +803,7 @@ export default function ServiceReportFormScreen() {
           text1: "Success",
           text2: "Service report saved successfully",
         });
-  
-        navigation.goBack();
+        navigation.navigate("ServiceReportsList");
       }
    }
     // catch (error) {
@@ -1303,44 +1307,96 @@ export default function ServiceReportFormScreen() {
         </Card>
 
         {/* Images */}
-        {/* <Card elevation={1} style={styles.section}>
-          <ThemedText type="h4" style={styles.sectionTitle}>Images</ThemedText>
-          <ThemedText type="small" style={{ color: colors.textSecondary, marginBottom: Spacing.md }}>Add photos of the equipment or service work</ThemedText>
+        <Card elevation={1} style={styles.section}>
+          <ThemedText type="h4" style={[styles.sectionTitle, { marginBottom: Spacing.md }]}>
+            Images
+          </ThemedText>
 
-          <View style={styles.imageButtonsRow}>
-            <Pressable style={[styles.imageButton, { backgroundColor: colors.primary + "15" }]} onPress={takePhoto}>
-              <Feather name="camera" size={20} color={colors.primary} />
-              <ThemedText type="small" style={{ color: colors.primary, marginLeft: Spacing.sm, marginTop: Spacing.sm }}>Take Photo</ThemedText>
-            </Pressable>
-            <Pressable style={[styles.imageButton, { backgroundColor: colors.primary + "15" }]} onPress={pickImage}>
-              <Feather name="image" size={20} color={colors.primary} />
-              <ThemedText type="small" style={{ color: colors.primary, marginLeft: Spacing.sm, marginTop: Spacing.sm }}>Choose from Gallery</ThemedText>
-            </Pressable>
-          </View>
+          {!isSubmitted && (<ThemedText
+            type="small"
+            style={{ color: colors.textSecondary, marginBottom: Spacing.md }}
+          >
+            Add photos of the equipment or service work
+          </ThemedText>)}
 
-           {images.length > 0 && (
+          {/* Hide buttons when submitted */}
+          {!isSubmitted && (
+            <View style={styles.imageButtonsRow}>
+              <Pressable
+                style={[
+                  styles.imageButton,
+                  { backgroundColor: colors.primary + "15" },
+                ]}
+                onPress={takePhoto}
+              >
+                <Feather name="camera" size={20} color={colors.primary} />
+                <ThemedText
+                  type="small"
+                  style={{
+                    color: colors.primary,
+                    marginLeft: Spacing.sm,
+                    marginTop: Spacing.sm,
+                  }}
+                >
+                  Take Photo
+                </ThemedText>
+              </Pressable>
+
+              <Pressable
+                style={[
+                  styles.imageButton,
+                  { backgroundColor: colors.primary + "15" },
+                ]}
+                onPress={pickImage}
+              >
+                <Feather name="image" size={20} color={colors.primary} />
+                <ThemedText
+                  type="small"
+                  style={{
+                    color: colors.primary,
+                    marginLeft: Spacing.sm,
+                    marginTop: Spacing.sm,
+                  }}
+                >
+                  Choose from Gallery
+                </ThemedText>
+              </Pressable>
+            </View>
+          )}
+
+          {images.length > 0 && (
             <View style={styles.imagesGrid}>
-               {images.map((img, index) => (
+              {images.map((img, index) => (
                 <View key={index} style={styles.imageContainer}>
                   <Image
                     source={{ uri: img.uri }}
                     style={styles.imagePreview}
                     contentFit="cover"
                   />
+
                   <View style={styles.imageIndexBadge}>
-                    <Text style={styles.imageIndexText}>{index + 1}</Text>
+                    <ThemedText style={styles.imageIndexText}>
+                      {index + 1}
+                    </ThemedText>
                   </View>
-                  <Pressable
-                    style={[styles.imageRemoveButton, { backgroundColor: colors.error }]}
-                    onPress={() => removeImage(index)}
-                  >
-                    <Feather name="x" size={14} color="#fff" />
-                  </Pressable>
+
+                  {/* Hide remove button when submitted */}
+                  {!isSubmitted && (
+                    <Pressable
+                      style={[
+                        styles.imageRemoveButton,
+                        { backgroundColor: colors.error },
+                      ]}
+                      onPress={() => removeImage(index)}
+                    >
+                      <Feather name="x" size={14} color="#fff" />
+                    </Pressable>
+                  )}
                 </View>
               ))}
             </View>
-          )} 
-        </Card> */}
+          )}
+        </Card>
 
         {/* Remarks */}
         <Card elevation={1} style={styles.section}>

@@ -50,7 +50,8 @@ export interface GMStoreParams {
   checklist?: any[];
   is_otp_verified: string,
   is_pending: string,
-  frequency: string | undefined
+  frequency: string | undefined,
+  images?: RNFile[];
 }
 
 export interface ServiceTime {

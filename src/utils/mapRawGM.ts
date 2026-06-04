@@ -31,6 +31,12 @@ export function mapRawGM(raw: any) {
     services: raw.services || "",
     checklist_version: raw.checklist_version || "",
     gm_id: raw.gm_id || "",
+    images: (raw.images || []).map((url: string, index: number) => ({
+      uri: url,
+      name: `existing_${index}.jpg`,
+      type: "image/jpeg",
+      isExisting: true,   // mark as existing
+    })),
     
 
     // ---------- DATE + TIME ----------

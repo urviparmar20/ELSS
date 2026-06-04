@@ -11,6 +11,7 @@ import {
   RouteProp,
 } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { Image } from "expo-image";
 
 import { ThemedText } from "../components/ThemedText";
 import { Card } from "../components/Card";
@@ -302,6 +303,38 @@ export default function GMDetailScreen() {
         </ThemedText>
       </Card>
 
+       {/* IMAGES */}
+       <Card style={styles.card}>
+        <ThemedText
+          type="h3"
+          style={styles.sectionTitle}
+        >
+          Images
+        </ThemedText>
+
+        <View style={styles.imagesContainer}>
+          {Array.isArray(existingReport.images) && existingReport.images.length > 0 ? (
+            existingReport.images.map((img: any, index: number) => {
+              const imageUri =
+                typeof img === "string"
+                  ? img
+                  : img?.uri || img?.image || img?.url;
+
+              return (
+                <Image
+                  key={index}
+                  source={{ uri: imageUri }}
+                  style={styles.reportImage}
+                  contentFit="cover"
+                />
+              );
+            })
+          ) : (
+            <ThemedText type="body">-</ThemedText>
+          )}
+        </View>
+      </Card>
+
       {/* SERVICE INFO */}
       <Card style={styles.card}>
         <ThemedText type="h3" style={styles.sectionTitle}>
@@ -456,5 +489,17 @@ const styles = StyleSheet.create({
   scheduleDate: {
     fontWeight: "600",
     marginBottom: 4,
+  },
+  imagesContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginTop: 10,
+  },
+  
+  reportImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 8,
   },
 });
