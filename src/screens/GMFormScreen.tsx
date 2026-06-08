@@ -246,29 +246,7 @@ export default function MaintenanceFormScreen() {
       setIsAutoSerialNo(false); // enable editing
     }
   };
-  // const handleEquipmentChange = (id: string) => {
-  //   setEquipmentId(id);
-  
-  //   const selectedEquipment = equipmentOptions.find(
-  //     item => item.id === id
-  //   );
-  
-  //   if (!selectedEquipment) return;
-  
-  //   const sr = selectedEquipment.serialNo;
-  
-  //   // auto fill only if valid
-  //   if (
-  //     sr &&
-  //     sr.trim() !== "" &&
-  //     sr.toLowerCase() !== "null"
-  //   ) {
-  //     setMcSerialNo(sr);
-  //   } else {
-  //     // allow manual entry
-  //     setMcSerialNo("");
-  //   }
-  // };
+
   //frequency
   useEffect(() => {
     if (!isEditing) return;
@@ -1362,7 +1340,7 @@ export default function MaintenanceFormScreen() {
          }
 
         <Card elevation={1} style={styles.section}>
-          <ThemedText type="h4" style={styles.sectionTitle}>Parts & Lubricants Supplied:</ThemedText>
+          {/* <ThemedText type="h4" style={styles.sectionTitle}>Parts & Lubricants Supplied:</ThemedText>
           <View style={styles.twoColumn}>
             <View style={styles.inputHalf}>
               <FormInput label="Engine Air Filter" placeholder="Enter details" value={partsLubricants.engineAirFilter} onChangeText={(v) => updatePartsLubricants("engineAirFilter", v)} editable={!readOnly} selectTextOnFocus={!readOnly} readOnly={readOnly}/>
@@ -1391,8 +1369,11 @@ export default function MaintenanceFormScreen() {
             <View style={styles.inputHalf}>
               <FormInput label="Gear Oil" placeholder="Enter details" value={partsLubricants.gearOil} onChangeText={(v) => updatePartsLubricants("gearOil", v)} editable={!readOnly} selectTextOnFocus={!readOnly} readOnly={readOnly}/>
             </View>
-          </View>
-          <FormInput label="Other Parts Supplied" placeholder="Enter other parts and details" value={otherPart} onChangeText={setOtherPart} editable={!readOnly} selectTextOnFocus={!readOnly} readOnly={readOnly}/>
+          </View> */}
+          <ThemedText type="h4" style={{ marginBottom: Spacing.sm, fontWeight: "500" }}>
+            Other Parts Supplied
+          </ThemedText>
+          <FormInput placeholder="Enter other parts and details" value={otherPart} onChangeText={setOtherPart} editable={!readOnly} selectTextOnFocus={!readOnly} readOnly={readOnly}/>
         </Card>
 
         <Card elevation={1} style={styles.section}>

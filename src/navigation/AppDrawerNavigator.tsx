@@ -6,6 +6,9 @@ import { NavigatorScreenParams } from "@react-navigation/native";
 import type { ReportsStackParamList } from "./ReportsStackNavigator";
 import MaintenanceStackNavigator from "./MaintenanceStackNavigator";
 import type { MaintenanceStackParamList } from "./MaintenanceStackNavigator";
+import BreakdownCheckoutStackNavigator from "./BreakdownCheckoutStackNavigator";
+import type { BDCStackParamList } from "./BreakdownCheckoutStackNavigator";
+
 
 
 export type AppDrawerParamList = {
@@ -19,6 +22,7 @@ export type AppDrawerParamList = {
   SavedJobs: undefined;
   Chats: undefined;
   Logout: undefined;
+  BDCList: NavigatorScreenParams<BDCStackParamList>;
 };
 
 const Drawer = createDrawerNavigator<AppDrawerParamList>();
@@ -77,6 +81,18 @@ export default function AppDrawerNavigator() {
         }}
         initialParams={{
           screen: "PastGMList",
+        }}
+      />
+
+      <Drawer.Screen
+        name="BDCList"
+        component={BreakdownCheckoutStackNavigator}
+        options={{
+          title: "Breakdown Checkout",
+          headerShown: false,
+        }}
+        initialParams={{
+          screen: "BDCList",
         }}
       />
       {/* <Drawer.Screen

@@ -63,28 +63,32 @@ export default function GMDetailScreen() {
       ? colors.warning
       : colors.success;
 
-      const selectedServices =
-        existingReport?.services?.length > 0
-        ? existingReport.services.join(", ")
-        : existingReport?.frequency
-        ? existingReport.frequency
-        : Object.entries(existingReport?.job_list || {})
-            .filter(([_, value]) => value === true)
-            .map(([key]) =>
-              key
-                .replaceAll("_", " ")
-                .replace(/\b\w/g, (c) => c.toUpperCase())
-            )
-            .join(", ");
-      // const selectedServices = existingReport?.frequency ? existingReport.frequency
-      // : Object.entries(existingReport.job_list)
-      // .filter(([_, value]) => value === true)
-      // .map(([key]) =>
-      //   key
-      //     .replaceAll("_", " ")
-      //     .replace(/\b\w/g, (c) => c.toUpperCase())
-      // )
-      // .join(", ")
+  const formatServiceType = (text: string) => {
+    const normalized = text.toLowerCase().trim();
+  console.log('normalized',normalized);
+  
+    // Custom mappings
+    if (normalized === "half yearly") return "Quarterly";
+    if (normalized === "weekly checking") return "Weekly";
+    if (normalized === "yearly servicing") return "Yearly";
+  
+    // Camel/Title Case
+    return normalized
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, char => char.toUpperCase());
+  };
+
+  const selectedServices =
+    existingReport?.services?.length > 0
+      ? existingReport.services
+          .map((service: string) => formatServiceType(service))
+          .join(", ")
+      : existingReport?.frequency
+      ? formatServiceType(existingReport.frequency)
+      : Object.entries(existingReport?.job_list || {})
+          .filter(([_, value]) => value === true)
+          .map(([key]) => formatServiceType(key))
+          .join(", ");
 
   const formatDate = (date?: string) => {
     if (!date) return "-";

@@ -17,6 +17,7 @@ import { MaintenanceRecord } from "../types/maintenance";
 import CustomLoader from "../components/CustomLoader";
 import { FormDatePicker } from "../components/FormDatePicker";
 import { Toast } from "react-native-toast-message/lib/src/Toast";
+import { FormDropdown } from "../components/FormDropdown";
 
 type MaintenanceNavigationProp = NativeStackNavigationProp<MaintenanceStackParamList>;
 
@@ -28,6 +29,16 @@ export default function GMListScreen() {
   const { theme, isDark } = useTheme();
   const colors = Colors.light;
 
+  const frequencyOptions = [
+    { id: "", name: "All Frequencies" },
+    { id: "weekly", name: "Weekly" },
+    { id: "monthly", name: "Monthly" },
+    { id: "quarterly", name: "Quarterly" },
+    { id: "yearly", name: "Yearly" },
+  ];
+
+  const [showFrequencyDropdown, setShowFrequencyDropdown] = useState(false);
+  const [frequencyFilter, setFrequencyFilter] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
   const [gMList, setgMList] = useState<any[]>([]);
@@ -45,10 +56,13 @@ export default function GMListScreen() {
     }
   }, [data]); 
 
+  // console.log(
+  //   data?.data?.generalMaintenance[0]
+  // );
   
   useEffect(() => {
     setPage(1);
-  }, [searchQuery, filterStatus, gMList]);
+  }, [searchQuery, filterStatus, frequencyFilter, gMList]);
 
   const getStatusColor = (isPending: "Y" | "N") => {
     return isPending === "Y" ? colors.warning : colors.success;
@@ -67,6 +81,45 @@ export default function GMListScreen() {
       .replace(/–/g, "-")
       .trim()
       .toLowerCase();
+
+  const getJobLabel = (key: string) => {
+    const labels: Record<string, string> = {
+      weekly_checking: "Weekly",
+      monthly: "Monthly",
+      half_yearly: "Quarterly",
+      yearly_servicing: "Yearly",
+      cleaning: "Cleaning",
+      washing: "Washing",
+    };
+  
+    return labels[key] || toTitleCase(key);
+  };
+
+  const getReportFrequency = (report: any) => {
+    // 1. Use frequency field if available
+    if (report.frequency) {
+      const freq = report.frequency.toLowerCase().trim();
+  
+      if (freq === "half_yearly") return "quarterly";
+  
+      return freq;
+    }
+  
+    // 2. Fallback to job_list
+    if (report.job_list) {
+      const jobs = report.job_list;
+  
+      if (jobs.weekly_checking) return "weekly";
+      if (jobs.monthly) return "monthly";
+  
+      // Half Yearly should appear under Quarterly filter
+      if (jobs.half_yearly) return "quarterly";
+  
+      if (jobs.yearly_servicing) return "yearly";
+    }
+  
+    return "";
+  };
   const filteredReports = (gMList ?? []).filter(
     (report: any) => {
       const query = normalizeText(searchQuery);
@@ -91,6 +144,10 @@ export default function GMListScreen() {
         ? getStatusLabel(report.is_pending) ===
           filterStatus
         : true;
+
+      const matchesFrequency = frequencyFilter
+        ? getReportFrequency(report) === frequencyFilter
+        : true;  
   
       // DATE FILTER
       const reportDate = new Date(
@@ -110,6 +167,7 @@ export default function GMListScreen() {
       return (
         matchesSearch &&
         matchesFilter &&
+        matchesFrequency &&
         from &&
         to
       );
@@ -136,7 +194,6 @@ export default function GMListScreen() {
   };
     
   
-  const paginatedReports = filteredReports;
   
   const queryClient = useQueryClient();
 
@@ -147,6 +204,34 @@ export default function GMListScreen() {
       });
     }, [])
   );
+
+  const toTitleCase = (text: string) =>
+    text
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, char => char.toUpperCase());
+
+      const getFrequencyOrJobs = (report: any) => {
+        if (report.frequency?.trim()) {
+          return toTitleCase(report.frequency);
+        }
+      
+        if (!report.job_list) {
+          return "-";
+        }
+      
+        const activeJobs = Object.entries(report.job_list)
+          .filter(
+            ([key, value]) =>
+              value === true &&
+              !["cleaning", "washing"].includes(key)
+          )
+          .map(([key]) => getJobLabel(key));
+      
+        return activeJobs.length
+          ? activeJobs.join(", ")
+          : "-";
+      };
+
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
@@ -200,6 +285,18 @@ export default function GMListScreen() {
       
       <View style={styles.listItemHeader}>
         <View>
+          <View style={[
+            { backgroundColor: colors.error + "20", paddingHorizontal: 8, paddingVertical: 3, borderRadius: BorderRadius.sm, alignSelf: "flex-start", },
+          ]}>
+            <ThemedText
+              type="small"
+              style={{
+                color: colors.error
+              }}
+            >
+              {getFrequencyOrJobs(item)}
+            </ThemedText>
+          </View>
           <ThemedText type="h4" numberOfLines={1}>
             {item.company_name}
           </ThemedText>
@@ -305,13 +402,97 @@ export default function GMListScreen() {
           ) : null}
         </View>
       </View>
+      <View
+        style={{
+          flexDirection: "row",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}
+      >
+        <View style={styles.filterRow}>
+          <View style={styles.filterContainer}>
+            <FilterChip label="All" value={null} />
+            <FilterChip label="Pending" value="pending" />
+            <FilterChip label="Completed" value="completed" />
+          </View>
 
-      <View style={styles.filterContainer}>
-        
-        <FilterChip label="All" value={null} />
-        <FilterChip label="Pending" value="pending" />
-        <FilterChip label="Completed" value="completed" />
+          <Pressable
+            style={[
+              styles.frequencyChip,
+              {
+                backgroundColor: frequencyFilter
+                  ? colors.primary + "20"
+                  : colors.backgroundSecondary,
+              },
+            ]}
+            onPress={() => setShowFrequencyDropdown(!showFrequencyDropdown)}
+          >
+            <ThemedText
+              type="small"
+              style={{
+                color: frequencyFilter ? colors.primary : theme.text,
+              }}
+            >
+              {frequencyOptions.find(
+                item => item.id === frequencyFilter
+              )?.name || "Frequency"}
+            </ThemedText>
+
+            <Feather
+              name={showFrequencyDropdown ? "chevron-up" : "chevron-down"}
+              size={14}
+              color={colors.textSecondary}
+              style={{ marginLeft: 4 }}
+            />
+          </Pressable>
+        </View>
+
+
+
+        <View style={{ position: "relative" }}>
+          {showFrequencyDropdown && (
+            <View
+              style={[
+                styles.frequencyDropdown,
+                {
+                  backgroundColor: colors.backgroundDefault,
+                  borderColor: colors.inputBorder,
+                },
+              ]}
+            >
+              {frequencyOptions.map(option => (
+                <Pressable
+                  key={option.id}
+                  style={[
+                    styles.frequencyOption,
+                    option.id === frequencyFilter && {
+                      backgroundColor: colors.primary + "15",
+                    },
+                  ]}
+                  onPress={() => {
+                    setFrequencyFilter(option.id || null);
+                    setShowFrequencyDropdown(false);
+                  }}
+                >
+                  <ThemedText
+                    type="small"
+                    style={{
+                      color:
+                        option.id === frequencyFilter
+                          ? colors.primary
+                          : theme.text,
+                    }}
+                  >
+                    {option.name}
+                  </ThemedText>
+                </Pressable>
+              ))}
+            </View>
+          )}
+        </View>
+
       </View>
+
       <View style={styles.dateFilterRow}>
         {/* FROM */}
         <View style={{ flex: 1 }}>
@@ -437,9 +618,8 @@ const styles = StyleSheet.create({
   },
   filterContainer: {
     flexDirection: "row",
-    paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.md,
     gap: Spacing.sm,
+    flex: 1, 
   },
   filterChip: {
     paddingHorizontal: Spacing.lg,
@@ -544,5 +724,36 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginBottom: Spacing.md,
+  },
+  frequencyDropdown: {
+    position: "absolute",
+    top: 20,
+    right: 15,
+    width: 180,
+    borderWidth: 1,
+    borderRadius: 12,
+    elevation: 5,
+    zIndex: 999,
+  },
+  
+  frequencyOption: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  filterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.xs,
+    marginBottom: Spacing.sm,
+  },
+  
+  frequencyChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.full,
+    marginLeft: "auto",
   },
 });

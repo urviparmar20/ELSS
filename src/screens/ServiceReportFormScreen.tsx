@@ -1227,7 +1227,7 @@ export default function ServiceReportFormScreen() {
 
         {/* Parts & Lubricants */}
         <Card elevation={1} style={styles.section}>
-          <ThemedText type="h4" style={styles.sectionTitle}>Parts & Lubricants Supplied:</ThemedText>
+          {/* <ThemedText type="h4" style={styles.sectionTitle}>Parts & Lubricants Supplied:</ThemedText>
           <View style={styles.twoColumn}>
             <View style={styles.inputHalf}>
               <FormInput
@@ -1286,8 +1286,8 @@ export default function ServiceReportFormScreen() {
             <View style={styles.inputHalf}>
               <FormInput label="Transmission Oil" placeholder="Enter details" value={partsLubricants.transmissionOil} onChangeText={(v) => updatePartsLubricants("transmissionOil", v)} editable={!readOnly} selectTextOnFocus={!readOnly} readOnly={readOnly}/>
             </View>   
-          </View>
-          <ThemedText type="small" style={{ marginBottom: Spacing.sm, fontWeight: "500" }}>
+          </View> */}
+          <ThemedText type="h4" style={{ marginBottom: Spacing.sm, fontWeight: "500" }}>
             Other Parts Supplied
           </ThemedText>
           <View style={styles.twoColumn}>
