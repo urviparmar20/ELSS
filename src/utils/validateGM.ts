@@ -25,6 +25,7 @@ export const validateForm = (params: ValidateFormParams): { valid: boolean; erro
     remarks,
     technicianSignature,
     supervisorSignature,
+    foreman,
     serviceDepartment,
     // services
   } = params;
@@ -87,6 +88,8 @@ export const validateForm = (params: ValidateFormParams): { valid: boolean; erro
 
   if (!technicianSignature) errors.push("Please take Technician Signature");
   if (!supervisorSignature) errors.push("Please take KSS Supervisor Signature");
+  if (!foreman) errors.push("Foreman is required");
+
   if (!serviceDepartment) errors.push("Service Department is required");
 
 

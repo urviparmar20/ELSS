@@ -996,6 +996,7 @@ export default function ServiceReportFormScreen() {
               }
             }}
             readOnly={readOnly}
+            searchable
           />
           
           {/* <FormInput label="M/C or Serial No *" placeholder="Enter serial number" value={mcSerialNo} onChangeText={setMcSerialNo} editable={!readOnly}

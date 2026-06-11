@@ -374,6 +374,7 @@ export default function BDCFormScreen() {
                 options={equipmentOptions}
                 selectedValue={equipmentId}
                 onValueChange={handleEquipmentChange}
+                searchable
               />
             </View>
           </View>

@@ -78,6 +78,7 @@ export const buildGMFormData = (
     } as any);
   }
 
+  formData.append("foreman", params.foreman);
   formData.append("service_department", params.service_department);
   formData.append("current_date", params.current_date);
   formData.append("is_pending", params.is_pending);

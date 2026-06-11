@@ -147,7 +147,8 @@ export default function MaintenanceFormScreen() {
   const [activeAction, setActiveAction] = useState<SubmitAction>(null);
   const [technicianSignature, setTechnicianSignature] = useState("");
   const [supervisorSignature, setSupervisorSignature] = useState("");
-  const [serviceDepartment, setServiceDepartment] = useState(formData?.serviceDepartment || "");
+  const [serviceDepartment, setServiceDepartment] = useState(formData?.serviceDepartment || "ALPINE-ELSS");
+  const [foreman, setForeman] = useState(formData?.foreman || "");
   const [completionDate, setCompletionDate] = useState(formData?.completionDate || new Date().toISOString().split("T")[0]);
   const [otp, setOtp] = useState("");
   const [showAlert, setShowAlert] = useState(false);
@@ -261,7 +262,9 @@ export default function MaintenanceFormScreen() {
   //Company
   useEffect(() => {
     
-      const company = companyData?.data?.company;
+      const company = companyData?.data?.companies;
+      console.log('companyData?.data',company);
+      
       // Company dropdown
       if (!companyOptions.length && company?.company_names && company?.ids) {
         const companies = company.company_names.map((name: string, index: number) => ({
@@ -695,6 +698,7 @@ export default function MaintenanceFormScreen() {
       remarks,
       technicianSignature,
       supervisorSignature,
+      foreman,
       serviceDepartment,
       contactPerson,
       contactNo,
@@ -771,7 +775,8 @@ export default function MaintenanceFormScreen() {
         signature_supervisor: supUri
           ? { uri: supUri, name: "sup.png", type: "image/png" }
           : undefined,
-  
+
+        foreman: foreman, 
         service_department: serviceDepartment,
         current_date:
           completionDate instanceof Date
@@ -905,19 +910,21 @@ export default function MaintenanceFormScreen() {
             // onValueChange={(id) => setEquipmentId(id)}
             onValueChange={handleEquipmentChange}
             readOnly={readOnly || isEditing}
+            searchable
           />
 
           {/* <FormInput label="M/C or Serial No *" placeholder="Enter serial number" value={mcSerialNo} onChangeText={setMcSerialNo} editable={!readOnly && !isEditing} selectTextOnFocus={!readOnly && !isEditing} readOnly={readOnly || isEditing}/> */}
           <FormInput
-  label="M/C or Serial No *"
-  placeholder="Enter serial number"
-  value={mcSerialNo}
-  onChangeText={setMcSerialNo}
-  editable={!readOnly && !isAutoSerialNo}
-  selectTextOnFocus={!readOnly && !isAutoSerialNo}
-  readOnly={readOnly || isAutoSerialNo}
-/>
-          <FormInput label="Hour Meter" placeholder="Enter hour meter reading" value={hourMeter} onChangeText={setHourMeter} keyboardType="numeric" editable={!readOnly && !isEditing} selectTextOnFocus={!readOnly && !isEditing} readOnly={readOnly || isEditing}/>
+            label="M/C or Serial No *"
+            placeholder="Enter serial number"
+            value={mcSerialNo}
+            onChangeText={setMcSerialNo}
+            editable={!readOnly && !isAutoSerialNo}
+            selectTextOnFocus={!readOnly && !isAutoSerialNo}
+            readOnly={readOnly || isAutoSerialNo}
+          />
+          <FormInput label="Hour Meter" placeholder="Enter hour meter reading" value={hourMeter} onChangeText={setHourMeter} keyboardType="numeric" editable={!readOnly} selectTextOnFocus={!readOnly} readOnly={readOnly}/>
+          
           <FormInput label="Job No" placeholder="Enter job number" value={jobNo} onChangeText={setJobNo} editable={!readOnly && !isEditing} selectTextOnFocus={!readOnly && !isEditing} readOnly={readOnly || isEditing}/>
           
          
@@ -1380,6 +1387,7 @@ export default function MaintenanceFormScreen() {
           <ThemedText type="h4" style={styles.sectionTitle}>Signatures & Completion</ThemedText>
           <SignatureBox label="Service Technician Signature" value={technicianSignature} onChange={setTechnicianSignature} readOnly={readOnly}/>
           <SignatureBox label="Alpine Supervisor Signature" value={supervisorSignature} onChange={setSupervisorSignature} readOnly={readOnly}/>
+          <FormInput label="Foreman" placeholder="Enter foreman" value={foreman} onChangeText={setForeman} editable={!readOnly} selectTextOnFocus={!readOnly} readOnly={readOnly}/>
           <FormInput label="Service Department" placeholder="Enter department" value={serviceDepartment} onChangeText={setServiceDepartment} editable={!readOnly} selectTextOnFocus={!readOnly} readOnly={readOnly}/>
           <FormDatePicker label="Completion Date" value={completionDate} onChange={setCompletionDate} readOnly={readOnly}/>
         </Card>

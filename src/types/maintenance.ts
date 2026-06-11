@@ -44,6 +44,7 @@ export interface GMStoreParams {
   other_parts_supplied_list: string,
   signature_technician?: RNFile;
   signature_supervisor?: RNFile;
+  foreman: string;
   service_department: string;
   current_date: string,
   operation_check_list?: Record<string, boolean>,
@@ -93,6 +94,7 @@ export type ValidateFormParams = {
   remarks: string;
   technicianSignature: string;
   supervisorSignature: string;
+  foreman: string;
   serviceDepartment: string;
   // services: string[];
 };
@@ -133,6 +135,7 @@ export interface MaintenanceRecord {
   partsLubricants: PartsLubricants;
   technicianSignature: string;
   supervisorSignature: string;
+  foreman: string;
   serviceDepartment: string;
   completionDate: string;
   images: string[];
