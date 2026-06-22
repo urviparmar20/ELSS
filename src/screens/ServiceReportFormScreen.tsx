@@ -42,6 +42,8 @@ import { useGenerateOTPSR } from "../hooks/useGenerateOTPSR";
 import { useVerifyOTPSR } from "../hooks/useVerifyOTPSR";
 import { downloadRemoteFile } from "../utils/downloadRemoteFile";
 import { ensureFileExists } from "../utils/ensureFileExists";
+import { isCompanyV2Enabled } from '../utils/appVersion';
+
 
 type ServiceReportFormRouteProp = RouteProp<ReportsStackParamList, "ServiceReportForm">;
 type ReportsNavigationProp = NativeStackNavigationProp<ReportsStackParamList>;
@@ -142,11 +144,8 @@ export default function ServiceReportFormScreen() {
   const [technicianSignature, setTechnicianSignature] = useState("");
   const [clientSignature, setClientSignature] = useState("");
   const [completionDate, setCompletionDate] = useState(formData?.completionDate || new Date().toISOString().split("T")[0]);
-  
-
 
   const [images, setImages] = useState<RNImage[]>(formData?.images || []);
-
 
   const { data: companyData } = useCompanies();
   const { data: eqTypeData } = useEquipmentTypeList();
@@ -220,15 +219,34 @@ export default function ServiceReportFormScreen() {
     
 
   useEffect(() => {
-    const company = companyData?.data?.company;
+    if(isCompanyV2Enabled())
+    {
+      const companies = companyData?.data?.companies;
+      
+      if (Array.isArray(companies)) {
+        const formattedCompanies = companies.map((item: any) => ({
+          id: String(item.id),
+          name: item.company_name,
+        }));
     
-    if (!companyOptions.length && company?.company_names && company?.ids) {
-      const companiesArr = company.company_names.map((name: string, index: number) => ({
-        id: String(company.ids[index]),
-        name,
-      }));
-      setCompanyOptions(companiesArr);
+        setCompanyOptions(formattedCompanies);
+      }
     }
+    else
+    {
+      const company = companyData?.data?.company;
+    
+      if (!companyOptions.length && company?.company_names && company?.ids) {
+        const companiesArr = company.company_names.map((name: string, index: number) => ({
+          id: String(company.ids[index]),
+          name,
+        }));
+        setCompanyOptions(companiesArr);
+      }
+    }
+   
+
+    
 
     const equipmentTypeList = eqTypeData?.data?.equipmentTypeList;
     if (equipmentTypeList?.ids && equipmentTypeList?.types) {
@@ -473,9 +491,35 @@ export default function ServiceReportFormScreen() {
   const removeImage = (index: number) => {
     setImages((prev) => prev.filter((_, i) => i !== index));
   };
-  // console.log('images', images);
   
-
+  const handleCompanySelect = (id: string) => {    
+    if (isCompanyV2Enabled()) {
+      handleCompanyChange(id);
+    } else {
+      setCompanyId(id);
+    }
+  };
+  const handleCompanyChange = (id: string) => {
+    setCompanyId(id);
+  
+    const company = companyData?.data?.companies?.find(
+      (item: any) => String(item.id) === id
+    );
+  
+    if (!company) return;
+  
+    // Address
+    setAddress(
+      [
+        company.address?.address_line_1,
+        company.address?.address_line_2,
+        company.address?.postal_code,
+        company.address?.country,
+      ]
+        .filter(Boolean)
+        .join(", ")
+    );
+  };
 
   // Dynamically map API checklist to your state
   const mapApiChecklistDynamic = (apiChecklist: Record<string, any>) => {
@@ -932,8 +976,8 @@ export default function ServiceReportFormScreen() {
             placeholder="Select company"
             options={companyOptions}
             selectedValue={companyId}
-            onValueChange={(id) => setCompanyId(id)}
-            readOnly={readOnly}
+            onValueChange={handleCompanySelect}
+            readOnly={readOnly || isEditing}
           />
 
           <FormInput 

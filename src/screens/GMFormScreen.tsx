@@ -41,6 +41,7 @@ import CheckListAPKL from "../components/CheckListAPKL";
 import * as FileSystem from "expo-file-system/legacy";
 import { downloadRemoteFile } from "../utils/downloadRemoteFile";
 import { ensureFileExists } from "../utils/ensureFileExists";
+import { isCompanyV2Enabled } from "../utils/appVersion";
 
 type MaintenanceFormRouteProp = RouteProp<MaintenanceStackParamList, "GMForm">;
 type MaintenanceNavigationProp = NativeStackNavigationProp<MaintenanceStackParamList>;
@@ -86,10 +87,10 @@ export default function MaintenanceFormScreen() {
   const queryClient = useQueryClient();
   const token = useSelector((state: RootState) => state.auth.token);
   const userId = useSelector((state: RootState) => state.auth.user?.user_id);
-  
+
   const existingReport = route.params?.report || null;
   const readOnly = route.params?.readOnly ?? false;
-  const gmId = route.params?.gm_id;
+  const gmId = route.params?.gm_id;  
 
   const formData = React.useMemo(
     () => (existingReport ? mapRawGM(existingReport) : null),
@@ -128,7 +129,13 @@ export default function MaintenanceFormScreen() {
   const [finalChecklistPayload, setFinalChecklistPayload] = useState<any[]>(
     formData?.v2_checklist_data || []
   );
-  
+
+  const [contactPersonOptions, setContactPersonOptions] = useState<
+  { id: string; name: string; phone?: string; email?: string }[]
+  >([]);
+
+  const [selectedContactPersonId, setSelectedContactPersonId] = useState("");
+    
   const [services, setServices] = useState({
     weeklyChecking: false,
     monthlyServicing: false,
@@ -261,20 +268,32 @@ export default function MaintenanceFormScreen() {
 
   //Company
   useEffect(() => {
-    
-      const company = companyData?.data?.companies;
-      console.log('companyData?.data',company);
+    if(isCompanyV2Enabled())
+    {
+      const companies = companyData?.data?.companies;
       
-      // Company dropdown
+      if (Array.isArray(companies)) {
+        const formattedCompanies = companies.map((item: any) => ({
+          id: String(item.id),
+          name: item.company_name,
+        }));
+    
+        setCompanyOptions(formattedCompanies);
+      }
+    }
+    else
+    {
+      const company = companyData?.data?.company;
+    
       if (!companyOptions.length && company?.company_names && company?.ids) {
-        const companies = company.company_names.map((name: string, index: number) => ({
+        const companiesArr = company.company_names.map((name: string, index: number) => ({
           id: String(company.ids[index]),
           name,
         }));
-
-        setCompanyOptions(companies);
+        setCompanyOptions(companiesArr);
       }
-  
+    }
+   
     // Equipment type dropdown (using index pair mapping)
     const equipmentTypeList = eqTypeData?.data?.equipmentTypeList;
     if (equipmentTypeList?.ids && equipmentTypeList?.types) {
@@ -564,6 +583,60 @@ export default function MaintenanceFormScreen() {
   
     setChecklist(formData.checklist);
   }, [isEditing, checklistData, formData]);
+
+
+  useEffect(() => {
+    if (!isEditing) return;
+    if (!companyData?.data?.companies?.length) return;
+    if (!companyId) return;
+  
+    const company = companyData.data.companies.find(
+      (item: any) => String(item.id) === String(companyId)
+    );
+  
+    if (!company) return;
+  
+    const contacts =
+      company.contact_persons?.map((person: any, index: number) => ({
+        id: String(person.id ?? index),
+        name:
+          person.name ||
+          person.contact_person ||
+          person.contact_person_name ||
+          `Contact ${index + 1}`,
+        phone: person.contact_no || person.phone || "",
+        email: person.email || "",
+      })) || [];
+  
+    setContactPersonOptions(contacts);
+  
+    // Select existing contact person
+    const selectedContact = contacts.find(
+      c =>
+        c.name?.trim().toLowerCase() ===
+        formData?.contactPerson?.trim().toLowerCase()
+    );
+  
+    if (selectedContact) {
+      setSelectedContactPersonId(selectedContact.id);
+    }
+  }, [isEditing, companyData, companyId, formData]);
+
+
+  useEffect(() => {
+    if (!isEditing) return;
+    if (!contactPersonOptions.length) return;
+  
+    const selected = contactPersonOptions.find(
+      item =>
+        item.name.trim().toLowerCase() ===
+        contactPerson.trim().toLowerCase()
+    );
+  
+    if (selected) {
+      setSelectedContactPersonId(selected.id);
+    }
+  }, [contactPersonOptions, contactPerson, isEditing]);
   
   const formatTime = (date: Date) =>
   date.toLocaleTimeString("en-GB", {
@@ -680,6 +753,72 @@ export default function MaintenanceFormScreen() {
     setImages((prev) => prev.filter((_, i) => i !== index));
   };
 
+  const handleCompanySelect = (id: string) => {    
+    if (isCompanyV2Enabled()) {
+      handleCompanyChange(id);
+    } else {
+      setCompanyId(id);
+    }
+  };
+
+  const handleCompanyChange = (id: string) => {
+    setCompanyId(id);
+  
+    const company = companyData?.data?.companies?.find(
+      (item: any) => String(item.id) === id
+    );
+  
+    if (!company) return;
+  
+    // Address
+    setAddress(
+      [
+        company.address?.address_line_1,
+        company.address?.address_line_2,
+        company.address?.postal_code,
+        company.address?.country,
+      ]
+        .filter(Boolean)
+        .join(", ")
+    );
+  
+    // Contact Person Dropdown
+    const contacts =
+      company.contact_persons?.map((person: any, index: number) => ({
+        id: String(person.id ?? index),
+        name:
+          person.name ||
+          person.contact_person ||
+          person.contact_person_name ||
+          `Contact ${index + 1}`,
+        phone: person.contact_no || person.phone || "",
+        email: person.email || "",
+      })) || [];
+  
+    setContactPersonOptions(contacts);
+  
+    // Reset previous selection
+    if (!isEditing) {
+      setSelectedContactPersonId("");
+      setContactPerson("");
+      setContactNo("");
+      setEmail("");
+    }
+  };
+
+  const handleContactPersonChange = (id: string) => {
+    setSelectedContactPersonId(id);
+  
+    const selected = contactPersonOptions.find(
+      (item) => item.id === id
+    );
+  
+    if (!selected) return;
+  
+    setContactPerson(selected.name);
+    setContactNo(selected.phone || "");
+    setEmail(selected.email || "");
+  };
 
   const handleFormSubmit = async (action: SubmitAction) => {
     setActiveAction(action);
@@ -736,6 +875,7 @@ export default function MaintenanceFormScreen() {
       if (techUri) await ensureFileExists(techUri);
       if (supUri) await ensureFileExists(supUri);
   
+      const cleanedContactNo = String(contactNo).replace(/\D/g, "");
       // 4. Build FormData (fresh instance always)
       const payload = buildGMFormData({
         maintenance_id: isEditing ? existingReport.id : 0,
@@ -743,7 +883,7 @@ export default function MaintenanceFormScreen() {
         email,
         address,
         contact_person: contactPerson,
-        contact_no: contactNo,
+        contact_no: cleanedContactNo,
         equipment_type: equipmentTypeId,
         equipment_id: equipmentId,
         job_no: jobNo,
@@ -873,18 +1013,28 @@ export default function MaintenanceFormScreen() {
             placeholder="Select company"
             options={companyOptions}
             selectedValue={companyId}
-            onValueChange={setCompanyId}
+            onValueChange={handleCompanySelect}
             readOnly={readOnly || isEditing}
           />
 
           <FormInput label="Address" placeholder="Enter address" value={address} onChangeText={setAddress} multiline editable={!readOnly}
             selectTextOnFocus={!readOnly}
             readOnly={readOnly}/>
-          <FormInput label="Contact Person" placeholder="Enter contact person" value={contactPerson} onChangeText={setContactPerson} editable={!readOnly && !isEditing}selectTextOnFocus={!readOnly && !isEditing} readOnly={readOnly || isEditing}/>
+          {isCompanyV2Enabled() ? (
+              <FormDropdown
+              label="Contact Person"
+              placeholder="Select contact person"
+              options={contactPersonOptions}
+              selectedValue={selectedContactPersonId}
+              onValueChange={handleContactPersonChange}
+              readOnly={readOnly || isEditing}
+            />
+            ) : (
+              <FormInput label="Contact Person" placeholder="Enter contact person" value={contactPerson} onChangeText={setContactPerson} editable={!readOnly && !isEditing}selectTextOnFocus={!readOnly && !isEditing} readOnly={readOnly || isEditing}/>
+          )}
+          
           <FormInput label="Contact No" placeholder="Enter contact number" value={contactNo} onChangeText={setContactNo} keyboardType="phone-pad" editable={!readOnly && !isEditing} selectTextOnFocus={!readOnly && !isEditing} readOnly={readOnly || isEditing}/>
-          <FormInput label="Email" placeholder="Enter email" value={email} onChangeText={setEmail} editable={!readOnly}
-            selectTextOnFocus={!readOnly}
-            readOnly={readOnly}/>
+          <FormInput label="Email" placeholder="Enter email" value={email} onChangeText={setEmail} editable={!readOnly && !isEditing} selectTextOnFocus={!readOnly && !isEditing} readOnly={readOnly || isEditing}/>
         </Card>
 
         <Card elevation={1} style={styles.section}>

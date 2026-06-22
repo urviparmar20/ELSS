@@ -7,7 +7,7 @@ export const buildGMFormData = (
 
   formData.append("maintenance_id", String(params.maintenance_id))
   formData.append("company_name", params.company_name);
-  // formData.append("email", params.email);
+  formData.append("email", params.email);
   formData.append("address", params.address);
   formData.append("contact_person", params.contact_person);
   formData.append("contact_no", params.contact_no);

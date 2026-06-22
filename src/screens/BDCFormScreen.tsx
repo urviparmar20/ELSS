@@ -182,9 +182,7 @@ export default function BDCFormScreen() {
 
   const handleEquipmentChange = (id: string) => {
     setEquipmentId(id);
-  
-    console.log('id',id);
-    
+      
     const selectedEquipment = equipmentOptions.find(
       item => item.id === id
     );
@@ -264,8 +262,6 @@ export default function BDCFormScreen() {
       // 5. CRITICAL FIX: clone FormData (prevents RN mutation bug)
       const safeFormData = new FormData();
       (payload as any)._parts?.forEach(([k, v]: any) => {
-        console.log('data',k,v);
-
         safeFormData.append(k, v);
       });
       
@@ -275,9 +271,7 @@ export default function BDCFormScreen() {
         let lastErr;
   
         for (let i = 0; i < 3; i++) {
-          try {
-            console.log('isEditing',isEditing);
-            
+          try {            
             // return await mutateAsync({ formData: data });
             if (isEditing) {
               return await updateBDC({

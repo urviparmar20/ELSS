@@ -147,7 +147,7 @@ export default function BDCListScreen() {
           <Feather name="search" size={20} color={colors.textSecondary} />
           <TextInput
             style={[styles.searchTextInput, { color: theme.text }]}
-            placeholder="Search GM..."
+            placeholder="Search checkout..."
             placeholderTextColor={colors.textSecondary}
             value={searchQuery}
             onChangeText={setSearchQuery}

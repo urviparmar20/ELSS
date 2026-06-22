@@ -34,8 +34,7 @@ export default function GMDetailScreen() {
 
   const existingReport = route.params?.report || null;
   const gmId = route.params?.gm_id;
-  const readOnly = route.params?.readOnly;
-  
+  const readOnly = route.params?.readOnly;  
 
   const colors = Colors.light;
 
@@ -64,9 +63,7 @@ export default function GMDetailScreen() {
       : colors.success;
 
   const formatServiceType = (text: string) => {
-    const normalized = text.toLowerCase().trim();
-  console.log('normalized',normalized);
-  
+    const normalized = text.toLowerCase().trim();  
     // Custom mappings
     if (normalized === "half yearly") return "Quarterly";
     if (normalized === "weekly checking") return "Weekly";
@@ -344,6 +341,11 @@ export default function GMDetailScreen() {
         <ThemedText type="h3" style={styles.sectionTitle}>
           Service Info
         </ThemedText>
+
+        <DetailItem
+          label="Foreman"
+          value={existingReport.foreman}
+        />
 
         <DetailItem
           label="Service Department"

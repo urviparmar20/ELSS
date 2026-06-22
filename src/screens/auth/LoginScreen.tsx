@@ -66,6 +66,8 @@ const LoginScreen = () => {
         });
       },
       onError: (error: any) => {
+        console.log('error',error);
+        
         const backendError = error?.response?.data?.message;
 
         // if (backendError?.includes('employee_id')) {
