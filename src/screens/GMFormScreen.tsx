@@ -189,6 +189,26 @@ export default function MaintenanceFormScreen() {
 
   const { mutateAsync, isPending } = useStoreGM(token);  
 
+  const isEquipmentDeleted =
+  isEditing &&
+  !!formData?.equipmentId &&
+  !!equipmentListData?.data?.equipmentList?.equip_id &&
+  !equipmentListData.data.equipmentList.equip_id.some(
+    (id: number) => String(id) === String(formData.equipmentId)
+  );
+
+
+  useEffect(() => {
+    if (isEquipmentDeleted) {
+      Toast.show({
+        type: "error",
+        text1: "Equipment Deleted",
+        text2:
+          "Equipment ID has been deleted, that's why you can't update it.",
+      });
+    }
+  }, [isEquipmentDeleted]);
+
   useEffect(() => {
     if (isError && error) {
       Toast.show({
@@ -1544,22 +1564,10 @@ export default function MaintenanceFormScreen() {
 
         {!readOnly && (
         <View style={[styles.buttonContainer, { paddingBottom: insets.bottom + 100 }]}>
-          {/* <CustomButton 
-            onPress={() => handleFormSubmit("draft")}
-            disabled={
-              isSubmitted || (isPending && activeAction !== "draft")
-            }
-            style={[styles.draftButton, { backgroundColor: colors.secondary }]}>
-            {isSubmitted
-              ? "Draft Disabled"
-              : activeAction === "draft" && isPending
-                ? <CustomLoader color="#fff" />
-                : "Save as Draft"}
-          </CustomButton> */}
 
           <CustomButton
               onPress={() => handleFormSubmit("draft")}
-              disabled={isLoading || isSubmitted}
+              disabled={isLoading || isSubmitted || isEquipmentDeleted}
               style={[styles.draftButton, { backgroundColor: colors.secondary }]}
             >
               {isDraftLoading
@@ -1567,20 +1575,11 @@ export default function MaintenanceFormScreen() {
                 : isSubmitted
                   ? "Draft Disabled"
                   : "Save as Draft"}
-            </CustomButton>
-          {/* <CustomButton 
-            disabled={isPending && activeAction !== "submit"}
-            onPress={() => handleFormSubmit("submit")} 
-            style={[styles.submitButton, { backgroundColor: colors.primary }]}>
-              {activeAction === "submit" && isPending
-                ? <CustomLoader color="#fff" />
-                : isEditing
-                  ? "Update"
-                  : "Submit"}
-          </CustomButton> */}
+          </CustomButton>
           <CustomButton
               onPress={() => handleFormSubmit("submit")}
-              disabled={isLoading}
+              disabled={isSubmitLoading || isEquipmentDeleted}
+
               style={[styles.submitButton, { backgroundColor: colors.primary }]}
             >
               {isSubmitLoading

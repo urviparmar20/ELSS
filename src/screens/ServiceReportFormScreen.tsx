@@ -164,6 +164,26 @@ export default function ServiceReportFormScreen() {
     isSuccess: isSuccessVerify
   } = useVerifyOTPSR();
   
+
+  const isEquipmentDeleted =
+  isEditing &&
+  !!formData?.equipmentId &&
+  !!equipmentListData?.data?.equipmentList?.equip_id &&
+  !equipmentListData.data.equipmentList.equip_id.some(
+    (id: number) => String(id) === String(formData.equipmentId)
+  );
+
+
+  useEffect(() => {
+    if (isEquipmentDeleted) {
+      Toast.show({
+        type: "error",
+        text1: "Equipment Deleted",
+        text2:
+          "Equipment ID has been deleted, that's why you can't update it.",
+      });
+    }
+  }, [isEquipmentDeleted]);
   
   useEffect(() => {
     if (!isEditing) return;
@@ -1511,7 +1531,7 @@ export default function ServiceReportFormScreen() {
             </CustomButton> */}
             <CustomButton
               onPress={handleSaveAsDraft}
-              disabled={isLoading || isSubmitted}
+              disabled={isLoading || isEquipmentDeleted}
               style={[styles.draftButton, { backgroundColor: colors.secondary }]}
             >
               {isDraftLoading
@@ -1532,7 +1552,7 @@ export default function ServiceReportFormScreen() {
             </CustomButton> */}
             <CustomButton
               onPress={handleSubmit}
-              disabled={isLoading}
+              disabled={isEquipmentDeleted || isLoading}
               style={[styles.submitButton, { backgroundColor: colors.primary }]}
             >
               {isSubmitLoading
