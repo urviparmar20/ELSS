@@ -1580,7 +1580,7 @@ export default function MaintenanceFormScreen() {
               onPress={() => handleFormSubmit("submit")}
               disabled={isSubmitLoading || isEquipmentDeleted}
 
-              style={[styles.submitButton, { backgroundColor: colors.primary }]}
+              style={[ { backgroundColor: colors.primary }]}
             >
               {isSubmitLoading
                 ? <CustomLoader color="#fff" />
@@ -1638,7 +1638,6 @@ const styles = StyleSheet.create({
   addButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", paddingVertical: Spacing.md, borderWidth: 1, borderRadius: BorderRadius.sm, borderStyle: "dashed" },
   selectAllButton: { flexDirection: "row", alignItems: "center", paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderRadius: BorderRadius.sm },
   buttonContainer: { marginTop: Spacing.lg },
-  submitButton: {},
   twoColumn: {
     flexDirection: "row",
     flexWrap: "wrap",

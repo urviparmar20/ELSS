@@ -99,10 +99,6 @@ export type ValidateFormParams = {
   // services: string[];
 };
 
-export type ValidationResult = {
-  valid: boolean;
-  errors: string[];
-};
 
 export interface MaintenanceRecord {
   id: string;

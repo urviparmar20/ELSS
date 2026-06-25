@@ -39,11 +39,6 @@ export type ValidateFormParams = {
   logoutTime: string;
 };
 
-export type ValidationResult = {
-  valid: boolean;
-  errors: string[];
-};
-
 export interface BDCRecord {
   id: string;
   

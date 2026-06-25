@@ -8,6 +8,7 @@ import MaintenanceStackNavigator from "./MaintenanceStackNavigator";
 import type { MaintenanceStackParamList } from "./MaintenanceStackNavigator";
 import BreakdownCheckoutStackNavigator from "./BreakdownCheckoutStackNavigator";
 import type { BDCStackParamList } from "./BreakdownCheckoutStackNavigator";
+import OnOffHireStackNavigator, { ONOffHireStackParamList } from "./OnOffHireStackNavigator";
 
 
 
@@ -18,7 +19,7 @@ export type AppDrawerParamList = {
   PastRR: undefined;
   PastSR: NavigatorScreenParams<ReportsStackParamList>;
   PastGM: NavigatorScreenParams<MaintenanceStackParamList>;
-  PastOnOffHire: undefined;
+  PastOnOffHire: NavigatorScreenParams<ONOffHireStackParamList>;
   SavedJobs: undefined;
   Chats: undefined;
   Logout: undefined;
@@ -84,6 +85,17 @@ export default function AppDrawerNavigator() {
         }}
       />
 
+      <Drawer.Screen
+        name="PastOnOffHire"
+        component={OnOffHireStackNavigator}
+        options={{
+          title: "Past On/Off Hire",
+          headerShown: false,
+        }}
+        initialParams={{
+          screen: "PastOnOffHire",
+        }}
+      />
       <Drawer.Screen
         name="BDCList"
         component={BreakdownCheckoutStackNavigator}

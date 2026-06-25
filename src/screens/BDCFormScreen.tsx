@@ -259,14 +259,14 @@ export default function BDCFormScreen() {
         status: status.toLowerCase(),
       });
   
-      // 5. CRITICAL FIX: clone FormData (prevents RN mutation bug)
+      //  clone FormData (prevents RN mutation bug)
       const safeFormData = new FormData();
       (payload as any)._parts?.forEach(([k, v]: any) => {
         safeFormData.append(k, v);
       });
       
   
-      // 6. retry wrapper (prevents first-call network glitch)
+      //  retry wrapper (prevents first-call network glitch)
       const uploadWithRetry = async (data: FormData) => {
         let lastErr;
   
@@ -325,9 +325,7 @@ export default function BDCFormScreen() {
         text1: "Error",
         text2: errorMessage,
       });
-    } finally {
-      setActiveAction(null);
-    }
+    } 
   };
 
   return (

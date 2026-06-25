@@ -1,4 +1,4 @@
-import { ValidateFormParams, ValidationResult } from "../types/serviceReport";
+import { ValidateFormParams } from "../types/serviceReport";
 
 // Helper to convert HH:MM to minutes
 const timeToMinutes = (time: string) => {

@@ -10,10 +10,12 @@ import ProfileStackNavigator from "../navigation/ProfileStackNavigator";
 import { useTheme } from "../hooks/useTheme";
 import { Colors } from "../constants/theme";
 import { CommonActions } from "@react-navigation/native";
+import OnOffHireStackNavigator from "./OnOffHireStackNavigator";
 
 export type MainTabParamList = {
   MaintenanceTab: undefined;
   ReportsTab: undefined;
+  OnOffHireTab: undefined;
   ProfileTab: undefined;
 };
 
@@ -106,6 +108,35 @@ export default function MainTabNavigator() {
                 routes: [
                   {
                     name: "ReportsTab",
+                    state: {
+                      routes: [{ name: "ServiceReportsList" }],
+                    },
+                  },
+                ],
+              })
+            );
+          },
+        })}
+      />
+       <Tab.Screen
+        name="OnOffHireTab"
+        component={OnOffHireStackNavigator}
+        options={{
+          title: "On/Off Hire",
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="repeat" size={size} color={color} />
+          ),
+        }}
+        listeners={({ navigation }) => ({
+          tabPress: e => {
+            e.preventDefault();
+      
+            navigation.dispatch(
+              CommonActions.reset({
+                index: 0,
+                routes: [
+                  {
+                    name: "OnOffHireTab",
                     state: {
                       routes: [{ name: "ServiceReportsList" }],
                     },

@@ -69,6 +69,7 @@ export const Spacing = {
   "3xl": 40,
   "4xl": 48,
   "5xl": 56,
+  "6xl": 70,
   inputHeight: 56,
   buttonHeight: 48,
 };

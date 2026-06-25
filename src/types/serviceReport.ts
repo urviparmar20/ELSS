@@ -113,11 +113,6 @@ export type ValidateFormParams = {
 
 };
 
-export type ValidationResult = {
-  valid: boolean;
-  errors: string[];
-};
-
 export interface ServiceReportRecord {
   raw: any;
   id: string;

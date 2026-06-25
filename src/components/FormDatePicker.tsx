@@ -145,7 +145,7 @@ export function FormDatePicker({ label, value, onChange, placeholder = "Select d
 
   return (
     <View style={styles.container}>
-      {label ? <ThemedText type="small" style={[styles.label, { color: colors.textSecondary }]}>{label}</ThemedText> : null}
+      {label ? <ThemedText type="small" style={[styles.label]}>{label}</ThemedText> : null}
       <Pressable
         style={[styles.inputContainer, { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder }]}
         onPress={() => setShow(true)}
