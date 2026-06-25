@@ -85,7 +85,7 @@ export default function AppDrawerNavigator() {
         }}
       />
 
-      <Drawer.Screen
+      {/* <Drawer.Screen
         name="PastOnOffHire"
         component={OnOffHireStackNavigator}
         options={{
@@ -95,7 +95,7 @@ export default function AppDrawerNavigator() {
         initialParams={{
           screen: "PastOnOffHire",
         }}
-      />
+      /> */}
       <Drawer.Screen
         name="BDCList"
         component={BreakdownCheckoutStackNavigator}
