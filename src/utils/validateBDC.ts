@@ -8,7 +8,7 @@ export const validateForm = (params: ValidateFormParams): { valid: boolean; erro
     equipmentId,
     location,
     status,
-    date,
+    startDate,
     loginTime,
     logoutTime,
   } = params;
@@ -18,7 +18,7 @@ export const validateForm = (params: ValidateFormParams): { valid: boolean; erro
   if (!equipmentId) errors.push("Equipment ID is required");
   if (!location.trim()) errors.push("Location is required");
   if (!status) errors.push("Status is required");
-  if (!date) errors.push("Date is required");
+  if (!startDate) errors.push("Date is required");
 
   // Time validation
   if (loginTime && logoutTime) {

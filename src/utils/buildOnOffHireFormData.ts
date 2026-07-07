@@ -4,20 +4,38 @@ export const buildOnOffHireFormData = (
   params: Omit<OnOffHireStoreParams, "token">
 ) => {
   const formData = new FormData();
+  
 
-  formData.append("technician", String(params.userId));
-
-  formData.append("company_name", params.company_name);
-  formData.append("company_address", params.address);
-  formData.append("location", params.location);
-  formData.append("contact_person", params.contactPerson);
-  formData.append("contact_number", params.contactNo);
+  formData.append("user_id", String(params.userId));
+  if (params.hireId != "0") {
+    formData.append("hire_id", String(params.hireId));
+  }
+  if (params.company_name) {
+    formData.append("company_name", params.company_name || "25");
+  }
+  
+  if (params.address) {
+    formData.append("company_address", params.address);
+  }
+  
+  if (params.location) {
+    formData.append("location", params.location);
+  }
+  formData.append("contact_person_name", params.contactPerson || "john");
+  formData.append("contact_no", params.contactNo|| "98765432");
   formData.append("date", params.date);
 
-  formData.append("equipment_type", params.equipmentType);
-  formData.append("equipment_id", params.equipmentId);
+  if (params.equipmentType) {
+    formData.append("equipment_type_id", params.equipmentType);
+  }
+  
+  if (params.equipmentId) {
+    formData.append("equipment_id", params.equipmentId);
+  }
   formData.append("hr_meter", params.hourMeter);
-  formData.append("serial_no", params.mcSerialNo);
+  if (params.mcSerialNo) {
+    formData.append("serial_no", params.mcSerialNo);
+  }
 
 
   if(params.services)
@@ -59,32 +77,28 @@ export const buildOnOffHireFormData = (
     });
   }
 
-  formData.append("job_descriptions", params.remarks);
+  formData.append("remarks", params.remarks);
 
-  formData.append("on_hire_technician", params.technician);
+  formData.append("technician", params.technician);
   if (params.signatureTechnician) {
-    formData.append("on_hire_signature_technician", {
+    formData.append("signature_technician", {
       uri: params.signatureTechnician.uri,
       name: params.signatureTechnician.name,
       type: params.signatureTechnician.type,
     } as any);
   }
 
-  formData.append("on_hire_accepted_by", params.acceptedBy);
+  formData.append("accepted_by", params.acceptedBy);
   if (params.signatureAcceptedBy) {
-    formData.append("on_hire_signature_accepted_by", {
+    formData.append("signature_accepted_by", {
       uri: params.signatureAcceptedBy.uri,
       name: params.signatureAcceptedBy.name,
       type: params.signatureAcceptedBy.type,
     } as any);
   }
   formData.append("on_hire_date", params.hireDate);
-  formData.append("nric", params.nricWpPs);
-  formData.append("on_hire_contractor_name", params.contractorName);
-
-  //need to remove in future
-  formData.append("on_hire_client_name", "jimmy");
-  formData.append("on_hire_client_tel_no", "987654321");
+  formData.append("work_permit", params.nricWpPs);
+  formData.append("contractor_name", params.contractorName);
 
   return formData;
 };

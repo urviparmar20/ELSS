@@ -1,7 +1,7 @@
 export function mapRawBDC(raw: any) {
   if (!raw) return null;
 
-  console.log('raw',raw);
+  // console.log('raw',raw);
   
   return {
     equipmentTypeName: raw.equipment_type || "",
@@ -17,7 +17,12 @@ export function mapRawBDC(raw: any) {
     status: raw.status || "",
     bdc_id: raw.id || "",
     login_time: raw.login_time || "",
-    logout_time: raw.logout_time || ""
+    logout_time: raw.logout_time || "",
+    end_date: raw.end_date || "",
+    breakdown_date: raw.breakdown_date || "",
+    parts: raw.parts || "",
+    no_of_men: raw.no_of_men || "",
+    remarks: raw.remarks || "",
    
   }
 

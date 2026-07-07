@@ -32,7 +32,7 @@ export default function SendInReturnStackNavigator() {
       <Stack.Screen
         name="SendInReturnList"
         component={SendInReturnListScreen}
-        options={{ headerTitle: "On/Off Hire",         
+        options={{ headerTitle: "Send In / Return",         
           headerLeft: () => <DrawerMenuButton />,
         }} 
       />
@@ -41,7 +41,7 @@ export default function SendInReturnStackNavigator() {
         name="PastSendInReturn"
         component={PastSendInReturnListScreen}
         options={{
-          title: "Past On/Off Hire",
+          title: "Past Send In/Return",
           headerLeft: () => <DrawerMenuButton />,
         }}
       />
@@ -50,7 +50,7 @@ export default function SendInReturnStackNavigator() {
         component={SendInReturnFormScreen}
         options={{
           presentation: "modal",
-          headerTitle: "New On/Off Hire",
+          headerTitle: "New Send In/Return",
         }}
       />
       <Stack.Screen

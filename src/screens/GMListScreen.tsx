@@ -282,8 +282,16 @@ export default function GMListScreen() {
           </ThemedText>
         </View> */}
       </View>
-      
       <View style={styles.listItemHeader}>
+        <View style={styles.listItemInfo}>
+          <ThemedText type="small" numberOfLines={1} style={styles.gmId}>
+            {item.u_gm_id}
+          </ThemedText>
+        </View>
+      </View>
+      
+      
+      <View style={styles.listItemHeader}>  
         <View>
           <View style={[
             { backgroundColor: colors.error + "20", paddingHorizontal: 8, paddingVertical: 3, borderRadius: BorderRadius.sm, alignSelf: "flex-start", },

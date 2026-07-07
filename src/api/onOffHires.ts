@@ -1,21 +1,22 @@
-import api from "./api";
+import apiV2 from "./apiV2";
 
 interface OnOffHireParams {
   userId: number;
+  page: number;
   token: string;
 }
 
 export const onOffHireListApi = async ({
   userId,
+  page,
   token,
 }: OnOffHireParams) => {
   
   try {
-    console.log('userId',userId, token);
 
-    const response = await api.post(
-      "/on-hires",
-      { user_id: userId },
+    const response = await apiV2.post(
+      "/hire/list",
+      { user_id: userId, page },
       {
         headers: {
           Accept: "application/json",
@@ -27,9 +28,7 @@ export const onOffHireListApi = async ({
     return response.data;
 
   } catch (error: any) {
-    console.log("STATUS:", error?.response?.status);
-    console.log("DATA:", error?.response?.data);
-    console.log("HEADERS:", error?.response?.headers);
+    console.log("API ERROR (on-off-hires-list):", error);
     throw error;
   }
 };

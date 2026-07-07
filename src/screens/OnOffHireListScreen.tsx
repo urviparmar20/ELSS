@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { View, StyleSheet, FlatList, TextInput, Pressable } from "react-native";
 import { useBottomTabBarHeight } from "@react-navigation/bottom-tabs";
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { ThemedText } from "../components/ThemedText";
 import { ThemedView } from "../components/ThemedView";
@@ -16,6 +16,8 @@ import { Toast } from "react-native-toast-message/lib/src/Toast";
 import { useOnOffHires } from "../hooks/useOnOffHires";
 import { ONOffHireStackParamList } from "../navigation/OnOffHireStackNavigator";
 import { OnOffHireRecord } from "../types/onOffHire";
+import { CustomButton } from "../components/CustomButton";
+import { formatDate } from "../utils/formatDate";
 
 type OnOffHireNavigationProp = NativeStackNavigationProp<ONOffHireStackParamList>;
 
@@ -32,18 +34,68 @@ export default function OnOffHireListScreen() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
-  const [onOffHires, setOnOffHires] = useState<any[]>([]);
+  const [onOffHires, setOnOffHires] = useState<OnOffHireRecord[]>([]);
+
   const [currentPage, setCurrentPage] = useState(1);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const { data, isLoading, error, refetch } = useOnOffHires(currentPage);  
 
+  // console.log('data',data?.data);
+  
   useEffect(() => {
-    if (Array.isArray(data?.data?.onHires)) {
-      setOnOffHires(data.data.onHires);
+    if (!Array.isArray(data?.data)) return;
+  
+    const newItems = data.data;
+  
+    setOnOffHires(prev =>
+      currentPage === 1
+        ? newItems
+        : [...prev, ...newItems]
+    );
+  
+    const pagination = data.pagination;
+  
+    setHasMore(
+      pagination.current_page < pagination.last_page
+    );
+  
+    setIsFetchingMore(false);
+    isInitialLoad.current = false;
+  }, [data, currentPage]);
+  
+  useEffect(() => {
+    setCurrentPage(1);
+    setHasMore(true);
+  }, [searchQuery, filterStatus]);
+  
+  useFocusEffect(
+    useCallback(() => {
+      if (hasMounted.current) {
+        isInitialLoad.current = true;
+        setCurrentPage(1);
+        setHasMore(true);
+      } else {
+        hasMounted.current = true;
+      }
+    }, [])
+  );
+  
+  
+  const loadMore = () => {
+    if (
+      isInitialLoad.current ||
+      isFetchingMore ||
+      isLoading ||
+      !hasMore ||
+      !data  
+    ) {
+      return;
     }
-  }, [data]);
-
+  
+    setIsFetchingMore(true);
+    setCurrentPage(prev => prev + 1);
+  };
 
 
   const normalizeText = (text: string) =>
@@ -63,7 +115,9 @@ export default function OnOffHireListScreen() {
     return new Date(dateStr).setHours(0, 0, 0, 0);
   };
 
+
   const filteredReports = (onOffHires ?? []).filter(
+  
     (hire: any) => {
       const query = normalizeText(searchQuery);
 
@@ -74,19 +128,21 @@ export default function OnOffHireListScreen() {
   
         (hire.serial_no || "")
           .toLowerCase()
-          .includes(searchQuery.toLowerCase()) 
-        //   ||
+          .includes(searchQuery.toLowerCase()) ||
   
-        // (hire.equipment_type || "")
-        //   .toLowerCase()
-        //   .includes(searchQuery.toLowerCase()) 
-          // ||
+        (hire.equipment_type || "")
+          .toLowerCase()
+          .includes(searchQuery.toLowerCase()) ||
 
-        // normalizeText(String(hire.gm_id || "")).includes(query);
+        normalizeText(String(hire.hire_id || "")).includes(query);
+
+        // STATUS FILTER
+        const matchesStatus =
+        !filterStatus || hire.status === filterStatus;
 
         // DATE FILTER
         
-        const reportDate = parseDate(hire.date);
+        const reportDate = parseDate(hire.on_hire?.date);
 
         const from =
           fromDate
@@ -99,7 +155,7 @@ export default function OnOffHireListScreen() {
             : true;
       
       return (
-        matchesSearch && from && to 
+        matchesSearch && from && to && matchesStatus
       );
     }
   );
@@ -114,32 +170,31 @@ export default function OnOffHireListScreen() {
     !isLoading && onOffHires.length === 0;
 
 
-    const formatDate = (dateStr: string) => {
-      if (!dateStr) return "";
-    
-      let date: Date;
-    
-      if (dateStr.includes("/")) {
-        const [day, month, year] = dateStr.split("/");
-        date = new Date(
-          Number(year),
-          Number(month) - 1,
-          Number(day)
-        );
-      } else {
-        date = new Date(dateStr);
-      }
-    
-      if (isNaN(date.getTime())) {
-        return dateStr;
-      }
-    
-      return date.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      });
-    };
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "ON_HIRE":
+        return "On Hire";
+  
+      case "COMPLETED":
+        return "Completed";
+  
+      default:
+        return status.replace(/_/g, " ");
+    }
+  };
+  
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "ON_HIRE":
+        return colors.warning; // green
+  
+      case "COMPLETED":
+        return colors.success; // red
+  
+      default:
+        return colors.success;
+    }
+  };
 
   const renderFooter = () => {
     if (!isFetchingMore || !hasMore || error) return null;
@@ -152,52 +207,90 @@ export default function OnOffHireListScreen() {
   };
   
 
-  const renderItem = ({ item }: { item: OnOffHireRecord }) => (
-    <Card
-      elevation={1}
-      style={styles.listItem}
-      onPress={() => navigation.navigate("OnOffHireDetail", { onOffHire: item, hire_id: item.id, readOnly: false })}
-    >
-      <View style={styles.listItemHeader}>
-        <View>
-          <ThemedText type="h4" numberOfLines={1}>
-            {item.company_name}
-          </ThemedText>
-          <ThemedText type="small" style={{ color: colors.textSecondary }}>
-            {item.serial_no}
-          </ThemedText>
-        </View>
-        
-      </View>
+  const renderItem = ({ item }: { item: OnOffHireRecord }) => {
+    const formattedStatus = item.status
+    ?.toLowerCase()
+    .replace(/\b\w/g, c => c.toUpperCase());
 
-      <View style={styles.listItemDetails}>
-        <View style={styles.detailRow}>
-          <Feather name="tool" size={14} color={colors.textSecondary} />
-          <ThemedText type="small" style={{ color: colors.textSecondary, marginLeft: 6 }}>
-            {item.equipment_type}
-          </ThemedText>
+    return(
+      <Card
+        elevation={1}
+        style={styles.listItem}
+        onPress={() => navigation.navigate("OnOffHireDetail", { onOffHire: item, hire_id: item.hire_id, readOnly: false })}
+      >
+        <View style={styles.listItemHeader}>
+          <View style={styles.listItemInfo}>
+            <ThemedText type="small" numberOfLines={1} style={styles.srId}>
+              {item.hire_id}
+            </ThemedText>
+          </View>
+          <View
+            style={[
+              styles.statusBadge,
+              {
+                backgroundColor: getStatusColor(item.status) + "20",
+              },
+            ]}
+          >
+            <ThemedText
+              type="small"
+              style={[styles.statusText, { color: getStatusColor(item.status) }]}
+            >
+              {getStatusLabel(formattedStatus)}
+            </ThemedText>
+          </View>
         </View>
-        <View style={styles.detailRow}>
-          <Feather name="calendar" size={14} color={colors.textSecondary} />
-          <ThemedText type="small" style={{ color: colors.textSecondary, marginLeft: 6 }}>
-            {formatDate(item.date)}
-          </ThemedText>
-        </View>
-      </View>
-
-      <View style={styles.listItemActions}>
-        <Pressable
-          style={[styles.actionButton, { backgroundColor: colors.primary + "20" }]}
-          // onPress={() =>
-          //   navigation.navigate("ServiceReportForm", { report: item, sr_id: item.raw?.sr_id, readOnly: false })
-          // }
+        <View style={styles.listItemHeader}>
+          <View>
+            <ThemedText type="h4" numberOfLines={1}>
+              {item.company_name}
+            </ThemedText>
+            <ThemedText type="small" style={{ color: colors.textSecondary }}>
+              {item.serial_no}
+            </ThemedText>
+          </View>
           
-        >
-          <Feather name="edit-2" size={16} color={colors.primary} />
-        </Pressable>
-      </View>
-    </Card>
-  );
+        </View>
+
+        <View style={styles.listItemDetails}>
+          <View style={styles.detailRow}>
+            <Feather name="tool" size={14} color={colors.textSecondary} />
+            <ThemedText type="small" style={{ color: colors.textSecondary, marginLeft: 6 }}>
+              {item.equipment_type}
+            </ThemedText>
+          </View>
+          <View style={styles.detailRow}>
+            <Feather name="calendar" size={14} color={colors.textSecondary} />
+            <ThemedText type="small" style={{ color: colors.textSecondary, marginLeft: 6 }}>
+              {formatDate(item?.on_hire?.date)}
+            </ThemedText>
+          </View>
+        </View>
+        {
+          item.status == "ON_HIRE" &&
+
+          <View style={styles.listItemActions}>
+            <CustomButton
+              onPress={() =>
+                navigation.navigate("OnOffHireForm", { onOffHire: item, hire_id: item.hire_id, readOnly: false, flag: "needToOffHire" })
+              }
+              style={styles.offHireButton}
+            >
+              Need to Off Hire
+            </CustomButton>
+            <Pressable
+              style={[styles.actionButton, { backgroundColor: colors.primary + "20" }]}
+              onPress={() =>
+                navigation.navigate("OnOffHireForm", { onOffHire: item, hire_id: item.hire_id, readOnly: false, flag: "" })
+              }
+            >
+              <Feather name="edit-2" size={16} color={colors.primary} />
+            </Pressable>
+          </View>
+        }
+      </Card>
+    )
+}
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
@@ -211,7 +304,25 @@ export default function OnOffHireListScreen() {
     </View>
   );
 
- 
+  
+  const FilterChip = ({ label, value }: { label: string; value: string | null }) => (
+    <Pressable
+      style={[
+        styles.filterChip,
+        {
+          backgroundColor: filterStatus === value ? colors.primary : colors.backgroundSecondary,
+        },
+      ]}
+      onPress={() => setFilterStatus(filterStatus === value ? null : value)}
+    >
+      <ThemedText
+        type="small"
+        style={{ color: filterStatus === value ? "#fff" : theme.text }}
+      >
+        {label}
+      </ThemedText>
+    </Pressable>
+  );
 
   return (
     <ThemedView style={styles.container}>
@@ -236,6 +347,11 @@ export default function OnOffHireListScreen() {
             </Pressable>
           ) : null}
         </View>
+      </View>
+      <View style={styles.filterContainer}>
+        <FilterChip label="All" value={null} />
+        <FilterChip label="On Hire" value="ON_HIRE" />
+        <FilterChip label="Completed" value="COMPLETED" />
       </View>
 
       <View style={styles.dateFilterRow}>
@@ -325,6 +441,7 @@ export default function OnOffHireListScreen() {
           data={filteredReports}
           renderItem={renderItem}
           keyExtractor={(item) => item.id}
+          onEndReached={loadMore}
           onEndReachedThreshold={0.4}
           ListFooterComponent={renderFooter}
           ListEmptyComponent={renderEmptyState}
@@ -428,6 +545,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "flex-end",
     gap: Spacing.sm,
+    alignItems: "center",
+  },
+  offHireButton: {
+    width: 150,
+    height: 32,
+    alignItems: "center",
+    justifyContent: "center",
   },
   actionButton: {
     width: 36,

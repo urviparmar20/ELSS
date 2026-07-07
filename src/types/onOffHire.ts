@@ -17,17 +17,17 @@ export type ChecklistItemProps = {
 export interface OnOffHireStoreParams {
   token: string;
   userId: string;
-  onOffId: number;
-  company_name: string;
-  address: string;
-  location: string;
+  hireId: string;
+  company_name?: string;
+  address?: string;
+  location?: string;
   contactPerson: string;
   contactNo: string;
   date: string;
 
-  equipmentType: string;
-  equipmentId: string;
-  mcSerialNo: string;
+  equipmentType?: string;
+  equipmentId?: string;
+  mcSerialNo?: string;
   hourMeter: string;
 
   services?: Record<string, boolean>;
@@ -57,7 +57,6 @@ export type ValidateFormParams = {
   contactPerson: string;
   contactNo: string;
   date: string;
-
   equipmentType: string;
   equipmentId: string;
   mcSerialNo: string;
@@ -75,13 +74,16 @@ export type ValidateFormParams = {
 
 
 export interface OnOffHireRecord {
-  id: number;
+  on_hire: any;
+  id: string;
+  hire_id: string;
   company_name: string | null;
   company_address: string;
   location: string;
   contact_person: string;
   contact_number: string;
   date: string;
+  status: string;
 
   equipment_type: string;
   equipment_id: string;

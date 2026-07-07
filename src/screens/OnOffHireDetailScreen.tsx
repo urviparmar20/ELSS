@@ -26,6 +26,8 @@ import {
 import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { ONOffHireStackParamList } from "../navigation/OnOffHireStackNavigator";
+import { formatDate } from "../utils/formatDate";
+import { CustomButton } from "../components/CustomButton";
 
 type ONOffHireFormRouteProp = RouteProp<
   ONOffHireStackParamList,
@@ -46,6 +48,8 @@ export default function OnOffHireDetailScreen() {
   const colors = Colors.light;
 
   const report = existingReport?.raw || existingReport;  
+  console.log('report',report);
+  
 
   useEffect(() => {
     navigation.setOptions({
@@ -64,8 +68,8 @@ export default function OnOffHireDetailScreen() {
 
 
   // SERVICE TYPES
-  const selectedServices = report?.condition_list
-    ? Object.entries(report.condition_list)
+  const selectedServices = report?.on_hire?.condition_list
+    ? Object.entries(report.on_hire?.condition_list)
         .filter(([_, value]) => value === "true")
         .map(([key]) =>
           key
@@ -114,12 +118,12 @@ export default function OnOffHireDetailScreen() {
 
         <DetailItem
           label="Contact Name"
-          value={report.contact_person}
+          value={report.on_hire?.contact_person_name}
         />
 
         <DetailItem
           label="Contact No"
-          value={report.contact_number}
+          value={report.on_hire?.contact_no}
         />
 
         <DetailItem
@@ -134,7 +138,7 @@ export default function OnOffHireDetailScreen() {
 
         <DetailItem
           label="Date"
-          value={report.date}
+          value={formatDate(report.on_hire?.date)}
         />    
       </Card>
 
@@ -164,7 +168,7 @@ export default function OnOffHireDetailScreen() {
 
         <DetailItem
           label="Hour Meter"
-          value={report.hr_meter}
+          value={report.on_hire?.hr_meter}
         />
       </Card>
 
@@ -181,9 +185,6 @@ export default function OnOffHireDetailScreen() {
           label="Service Type"
           value={selectedServices}
         />
-
-        
-
       </Card>
 
       {/* DESCRIPTION */}
@@ -192,11 +193,11 @@ export default function OnOffHireDetailScreen() {
           type="h3"
           style={styles.sectionTitle}
         >
-          Description
+          Remarks
         </ThemedText>
 
         <ThemedText type="body">
-          {report.job_descriptions || "-"}
+          {report.on_hire?.remarks || "-"}
         </ThemedText>
       </Card>
 
@@ -210,8 +211,8 @@ export default function OnOffHireDetailScreen() {
         </ThemedText>
 
         <View style={styles.imagesContainer}>
-          {Array.isArray(report.images) && report.images.length > 0 ? (
-            report.images.map((img: any, index: number) => {
+          {Array.isArray(report.on_hire?.images) && report.on_hire?.images.length > 0 ? (
+            report.on_hire?.images.map((img: any, index: number) => {
               const imageUri =
                 typeof img === "string"
                   ? img
@@ -238,57 +239,68 @@ export default function OnOffHireDetailScreen() {
           type="h3"
           style={styles.sectionTitle}
         >
-          Service Info
+          Handover / On Hire Checking
         </ThemedText>
 
         <DetailItem
           label="Service Technician"
-          value={report.on_hire_technician}
+          value={report.on_hire?.technician}
         />
 
         <DetailItem
           label="Accepted by"
-          value={report.on_hire_accepted_by}
+          value={report.on_hire?.accepted_by}
+        />
+
+        <DetailItem
+          label="Work Permit"
+          value={report.on_hire?.work_permit}
         />
 
         <DetailItem
           label="Contractor name"
-          value={report.on_hire_contractor_name}
+          value={report.on_hire?.contractor_name}
         />
 
         <DetailItem
           label="Hire Date"
-          value={report.on_hire_date}
+          value={formatDate(report.on_hire?.date)}
         />
 
       </Card>
        {/* BUTTON */}
        {
-         !readOnly &&
-          <Pressable
-            style={[
-              styles.editButton,
-              {
-                backgroundColor: colors.primary,
-              },
-            ]}
-            // onPress={() =>
-            //   navigation.navigate("ServiceReportForm", {
-            //     report: existingReport,
-            //     sr_id: existingReport.raw.sr_id,
-            //     readOnly: false,
-            //   })
-            // }
-          >
-            <Feather name="edit-2" size={18} color="#fff" />
-
-            <ThemedText
-              type="body"
-              style={styles.editButtonText}
+         !readOnly && report?.status == "ON_HIRE" &&
+         <View style={styles.buttonView}>
+          <View style={styles.buttonWrapper}>
+            <CustomButton
+              onPress={() =>
+                navigation.navigate("OnOffHireForm", {
+                  onOffHire: report,
+                  hire_id: report.hire_id,
+                  readOnly: false,
+                  flag: "needToOffHire",
+                })
+              }
             >
-              Edit Record
-            </ThemedText>
-          </Pressable>
+              Need to Off Hire
+            </CustomButton>
+          </View>
+
+          <View style={styles.buttonWrapper}>
+            <CustomButton
+              onPress={() =>
+                navigation.navigate("OnOffHireForm", {
+                  onOffHire: report,
+                  hire_id: report.hire_id,
+                  readOnly: false,
+                })
+              }
+            >
+              Edit On Hire
+            </CustomButton>
+          </View>
+        </View>
        }
     </ScrollView>
   );
@@ -367,20 +379,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  editButton: {
-    height: 56,
-    borderRadius: 28,
-    justifyContent: "center",
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 10,
-    marginTop: Spacing.sm,
-  },
-
-  editButtonText: {
-    color: "#fff",
-    fontWeight: "700",
-  },
   scheduleItem: {
     paddingVertical: 10,
     borderBottomWidth: 1,
@@ -402,5 +400,27 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 8,
+  },
+  buttonView: {
+    flexDirection: "row",
+    gap: 12, // or marginHorizontal if your RN version doesn't support gap
+  },
+  
+  buttonWrapper: {
+    flex: 1,
+  },
+  
+  editButton: {
+    flex: 1,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  
+  editButtonText: {
+    color: "#fff",
+    marginLeft: 8,
   },
 });

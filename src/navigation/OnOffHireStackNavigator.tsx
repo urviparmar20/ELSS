@@ -16,10 +16,11 @@ export type ONOffHireStackParamList = {
     onOffHire?: any;
     hire_id?: string;
     readOnly?: boolean;
+    flag?: string;
   } | undefined;
   OnOffHireDetail: {
     onOffHire?: any;
-    hire_id?: number;
+    hire_id?: string;
     readOnly?: boolean;
   } | undefined;
 };
@@ -52,7 +53,7 @@ export default function OnOffHireStackNavigator() {
         component={OnOffHireFormScreen}
         options={{
           presentation: "modal",
-          headerTitle: "New On/Off Hire",
+          headerTitle: "New On Hire",
         }}
       />
       <Stack.Screen

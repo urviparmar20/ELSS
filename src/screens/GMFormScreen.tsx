@@ -962,7 +962,7 @@ export default function MaintenanceFormScreen() {
       // 5. CRITICAL FIX: clone FormData (prevents RN mutation bug)
       const safeFormData = new FormData();
       (payload as any)._parts?.forEach(([k, v]: any) => {
-        console.log('data',k,v);
+        // console.log('data',k,v);
 
         safeFormData.append(k, v);
       });

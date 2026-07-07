@@ -16,5 +16,15 @@ export const buildBDCFormData = (
   formData.append("login_time", params.login_time);
   formData.append("logout_time", params.logout_time);
   formData.append("status", params.status);
+  if (params.breakdown_date) {
+    formData.append("breakdown_date", params.breakdown_date);
+  }
+  if (params.end_date) {
+    formData.append("end_date", params.end_date);
+  }
+  formData.append("parts", params.parts);
+  formData.append("no_of_men", params.no_of_men);
+  formData.append("remarks", params.remarks);
+
   return formData;
 };

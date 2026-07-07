@@ -66,9 +66,16 @@ export default function BDCFormScreen() {
   const [location, setLocation] = useState(formData?.location || "");
   const [compliance, setCompliance] = useState(formData?.complied || "");
   const [replaceParts, setReplaceParts] = useState(formData?.replace_parts || "");
+  const [noOfMen, setNoOfMen] = useState(formData?.no_of_men || "");
+  const [remarks, setRemarks] = useState(formData?.remarks || "");
+  const [breakdownDate, setBreakdownDate] = useState(formData?.breakdown_date || "");
 
-  const [date, setDate] = useState(formData?.ch_date || "");
+  const [startDate, setStartDate] = useState(formData?.ch_date || "");
+  const [endDate, setEndDate] = useState(formData?.end_date || "");
+
   const [status, setStatus] = useState(formData?.status || "open");
+  const [parts, setParts] = useState(formData?.parts || "yes");
+
 
   const [loginTime, setLoginTime] = useState(formData?.login_time || "");
   const [logoutTime, setLogoutTime] = useState(formData?.logout_time || "");
@@ -214,6 +221,16 @@ export default function BDCFormScreen() {
       name: "Closed",
     },
   ];
+  const partsOptions = [
+    {
+      id: "yes",
+      name: "Yes",
+    },
+    {
+      id: "no",
+      name: "No",
+    },
+  ];
 
   const formatTime = (date: Date) =>
   date.toLocaleTimeString("en-GB", {
@@ -228,7 +245,7 @@ export default function BDCFormScreen() {
       equipmentId,
       location,
       status,
-      date,
+      startDate,
       loginTime,
       logoutTime
     });
@@ -253,10 +270,16 @@ export default function BDCFormScreen() {
         location: location,
         replace_parts: replaceParts,
         complied: compliance,
-        ch_date: formatApiDate(date),
+        ch_date: formatApiDate(startDate),
         login_time: loginTime,
         logout_time: logoutTime,
         status: status.toLowerCase(),
+        breakdown_date: breakdownDate ? formatApiDate(breakdownDate) : null,
+        end_date: endDate ? formatApiDate(endDate) : null,
+        no_of_men: noOfMen,
+        remarks,
+        parts: parts.toLowerCase(),
+
       });
   
       //  clone FormData (prevents RN mutation bug)
@@ -421,12 +444,30 @@ export default function BDCFormScreen() {
           <View style={styles.row}>
             <View style={styles.col}>
               <FormDatePicker
-                label="Date *"
-                value={date}
-                onChange={setDate}
+                label="Breakdown Date"
+                placeholder="Enter Breakdown Date"
+                value={breakdownDate}
+                onChange={setBreakdownDate}
               />
             </View>
-
+            <View style={styles.col}>
+              <FormDatePicker
+                label="Start Date *"
+                placeholder="Enter Start Date"
+                value={startDate}
+                onChange={setStartDate}
+              />
+            </View>
+          </View>
+          <View style={styles.row}>
+            <View style={styles.col}>
+              <FormDatePicker
+                label="End Date"
+                placeholder="Enter End Date"
+                value={endDate}
+                onChange={setEndDate}
+              />
+            </View>
             <View style={styles.col}>
               <FormDropdown
                 label="Status *"
@@ -437,6 +478,7 @@ export default function BDCFormScreen() {
               />
             </View>
           </View>
+          
 
           <View style={styles.row}>
             <View style={styles.col}>
@@ -495,6 +537,38 @@ export default function BDCFormScreen() {
               )}
             </View>
           </View>
+          <View style={styles.row}>
+            <View style={styles.col}>
+              <FormDropdown
+                label="Parts"
+                placeholder="Select Parts"
+                options={partsOptions}
+                selectedValue={parts}
+                onValueChange={setParts}
+              />
+            </View>
+
+            <View style={styles.col}>
+              <FormInput
+                label="No. of Men"
+                value={noOfMen}
+                onChangeText={setNoOfMen}
+                placeholder="e.g. 3 Men"
+              />
+            </View>
+          </View>
+          <FormInput
+            label="Remarks"
+            value={remarks}
+            onChangeText={setRemarks}
+            placeholder="Additional remarks (optional)"
+            multiline
+            numberOfLines={5}
+            style={{
+              height: 120,
+              textAlignVertical: "top",
+            }}
+          />
         </Card>
 
         <CustomButton

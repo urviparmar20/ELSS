@@ -1,18 +1,19 @@
 const BASE_URL = process.env.EXPO_PUBLIC_BASE_URL
 export const storeOnOffHireApi = async ({
   token,
-  hireType,
+  flag,
   formData,
 }: {
   token: string;
-  hireType: string;
+  flag: string;
   formData: FormData;
 }) => {
+  console.log('flag',flag);
   
-  const endpoint = hireType == "ON" ? "/on-hire/store": "/off-hire/store";
-  console.log('hireType',hireType, endpoint);
+  const endpoint = flag == "needToOffHire" ? "/hire/off/store" : "/hire/on/store";
+  const baseURL = "https://elss.devwebproject.com/api/v2";
 
-  const response = await fetch(`${BASE_URL}${endpoint}`, {
+  const response = await fetch(`${baseURL}${endpoint}`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -20,7 +21,7 @@ export const storeOnOffHireApi = async ({
     },
     body: formData,
   });
-console.log('response',response);
+// console.log('response',response);
 
   if (!response.ok) {
     const text = await response.text();

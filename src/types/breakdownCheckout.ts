@@ -23,6 +23,11 @@ export interface BDCStoreParams {
   logout_time: string;
   status: string;
   ch_date: string;
+  end_date: string | null;
+  breakdown_date: string | null;
+  parts: string;
+  no_of_men: string;
+  remarks: string;
 }
 
 // ----------------------
@@ -34,7 +39,7 @@ export type ValidateFormParams = {
   equipmentId: string;
   location: string;
   status: string;
-  date: string;
+  startDate: string;
   loginTime: string;
   logoutTime: string;
 };
@@ -53,4 +58,9 @@ export interface BDCRecord {
   logout_time: string;
   status: string;
   ch_date: string;
+  end_date: string;
+  breakdown_date: string;
+  parts: string;
+  no_of_men: string;
+  remarks: string;
 }

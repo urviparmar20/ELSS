@@ -11,11 +11,13 @@ import { useTheme } from "../hooks/useTheme";
 import { Colors } from "../constants/theme";
 import { CommonActions } from "@react-navigation/native";
 import OnOffHireStackNavigator from "./OnOffHireStackNavigator";
+import SendInReturnStackNavigator from "./SendInReturnStackNavigator";
 
 export type MainTabParamList = {
   MaintenanceTab: undefined;
   ReportsTab: undefined;
   OnOffHireTab: undefined;
+  SendInReturnTab: undefined;
   ProfileTab: undefined;
 };
 
@@ -138,7 +140,7 @@ export default function MainTabNavigator() {
                   {
                     name: "OnOffHireTab",
                     state: {
-                      routes: [{ name: "ServiceReportsList" }],
+                      routes: [{ name: "OnOffHireList" }],
                     },
                   },
                 ],
@@ -147,6 +149,35 @@ export default function MainTabNavigator() {
           },
         })}
       />
+      {/* <Tab.Screen
+        name="SendInReturnTab"
+        component={SendInReturnStackNavigator}
+        options={{
+          title: "Send In/Return",
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="repeat" size={size} color={color} />
+          ),
+        }}
+        listeners={({ navigation }) => ({
+          tabPress: e => {
+            e.preventDefault();
+      
+            navigation.dispatch(
+              CommonActions.reset({
+                index: 0,
+                routes: [
+                  {
+                    name: "SendInReturnTab",
+                    state: {
+                      routes: [{ name: "SendInReturnList" }],
+                    },
+                  },
+                ],
+              })
+            );
+          },
+        })}
+      /> */}
       <Tab.Screen
         name="ProfileTab"
         component={ProfileStackNavigator}

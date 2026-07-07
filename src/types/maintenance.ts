@@ -103,6 +103,7 @@ export type ValidateFormParams = {
 export interface MaintenanceRecord {
   id: string;
   companyId: string;
+  u_gm_id: string;
   company_name: string;
   email: string;
   mcSerialNo: string;

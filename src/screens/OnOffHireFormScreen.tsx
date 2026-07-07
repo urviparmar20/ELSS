@@ -40,6 +40,8 @@ import { useCompanies } from "../hooks/useCompanies";
 import { isCompanyV2Enabled } from "../utils/appVersion";
 import { resetOnOffHireForm } from "../utils/resetOnOffHireForm";
 import CustomLoader from "../components/CustomLoader";
+import { mapRawOnOffHire } from "../utils/mapRawOnOffHire";
+import { convertToISODate } from "../utils/convertToISODate";
 
 type OnOffHireFormRouteProp = RouteProp<ONOffHireStackParamList, "OnOffHireForm">;
 type OnOffHireNavigationProp = NativeStackNavigationProp<ONOffHireStackParamList>;
@@ -74,21 +76,22 @@ export default function OnOffHireFormScreen() {
   const insets = useSafeAreaInsets();
   const route = useRoute<OnOffHireFormRouteProp>();
   const colors = Colors.light;
-  const scrollViewRef = useRef<any>(null);
 
-  const existingReport = route.params?.report || null;
+  const existingReport = route.params?.onOffHire || null;
   const readOnly = route.params?.readOnly ?? false;
-  const gmId = route.params?.gm_id;  
+  const flag = route.params?.flag || "";
+
+  const hireId = route.params?.hire_id;  
 
   const isEditing = !!existingReport;
   const isSubmitted = isEditing && existingReport?.is_pending === "N";
 
   const formData = React.useMemo(
-    () => (existingReport ? mapRawGM(existingReport) : null),
+    () => (existingReport ? mapRawOnOffHire(existingReport) : null),
     [existingReport]
-  );
+  );  
+  
   const [isAutoSerialNo, setIsAutoSerialNo] = useState(false);
-  const [hireType, setHireType] = useState<"ON" | "OFF">("ON");
 
   const [address, setAddress] = useState(formData?.address || "");
   const [companyOptions, setCompanyOptions] = useState<{ id: string; name: string }[]>([]);
@@ -115,8 +118,13 @@ export default function OnOffHireFormScreen() {
 
   const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
 
-  const [date, setDate] = useState(formData?.completionDate || new Date().toISOString().split("T")[0]);
-  const [hireDate, setHireDate] = useState(formData?.completionDate || new Date().toISOString().split("T")[0]);
+  const [date, setDate] = useState(
+    convertToISODate(formData?.date)
+  );
+
+  const [hireDate, setHireDate] = useState(
+    convertToISODate(formData?.date)
+  );
 
   const [services, setServices] = useState({
     onHiringChecking: false,
@@ -157,50 +165,171 @@ export default function OnOffHireFormScreen() {
     runningCondition: false,
   });
   
-  const clearForm = () => {
-    resetOnOffHireForm({
-      setAddress,
-      setLocation,
-      setEquipmentTypeId,
-      setEquipmentId,
-      setMcSerialNo,
-      setHourMeter,
-      setIsAutoSerialNo,
-      setServices,
-      getDefaultServices,
-      setChecklist,
-      setImages,
-      setRemarks,
-      setServiceTechnician,
-      setTechnicianSignature,
-      setAcceptedBy,
-      setAcceptedbySignature,
-      setNRIC,
-      setContractorName,
-      setDate,
-      setHireDate,
-    });
-  };
-
   const { data: onOffHireCategoryData } = useOnOffHireCategory(equipmentTypeId);  
   const { data: eqTypeData } = useEquipmentTypeList();
   const { data: companyData } = useCompanies();
   const { data: equipmentListData } = useEquipmentListByType(equipmentTypeId);
-  const { mutateAsync: createOnOffHire, isPending: isCreatePending, } = useStoreOnOffHire(token, hireType); 
+  const { mutateAsync: createOnOffHire, isPending: isCreatePending } = useStoreOnOffHire(token, flag); 
 
-  const {
-    mutateAsync: updateOnOffHire,
-    isPending: isUpdatePending,
-  } = useStoreOnOffHire(token, hireType);
   
-  const isPending = isCreatePending || isUpdatePending; 
+  const isPending = isCreatePending; 
+
+  //signature
+  useEffect(() => {
+    if (!formData) return;
+  
+    setTechnicianSignature(formData.signature_technician || "");
+    setAcceptedbySignature(formData.signature_accepted_by || "");
+  }, [formData]);
+
+  useEffect(() => {
+    if (!onOffHireCategoryData?.data?.category) return;
+  
+    const categories = onOffHireCategoryData.data.category;
+  
+    if (!isEditing) {
+      setChecklist(categories);
+      return;
+    }
+  
+    const merged = categories.map((cat: any) => {
+      const saved = formData?.checklist?.find(
+        (i: any) => i.description === cat.description
+      );
+  
+      return saved
+        ? {
+            ...cat,
+            check: saved.check,
+            remarks: saved.remarks,
+          }
+        : cat;
+    });
+  
+    setChecklist(merged);
+  }, [onOffHireCategoryData, formData, isEditing]);
+
+
+  //contact person name
+  useEffect(() => {
+    if (!isEditing) return;
+    if (!companyData?.data?.companies?.length) return;
+    if (!companyId) return;
+  
+    const company = companyData.data.companies.find(
+      (item: any) => String(item.id) === String(companyId)
+    );
+  
+    if (!company) return;
+  
+    const contacts =
+      company.contact_persons?.map((person: any, index: number) => ({
+        id: String(person.id ?? index),
+        name:
+          person.name ||
+          person.contact_person ||
+          person.contact_person_name ||
+          `Contact ${index + 1}`,
+        phone: person.contact_no || person.phone || "",
+        email: person.email || "",
+      })) || [];
+  
+    setContactPersonOptions(contacts);
+  
+    // Select existing contact person
+    const selectedContact = contacts.find(
+      c =>
+        c.name?.trim().toLowerCase() ===
+        formData?.contactPerson?.trim().toLowerCase()
+    );
+  
+    if (selectedContact) {
+      setSelectedContactPersonId(selectedContact.id);
+    }
+  }, [isEditing, companyData, companyId, formData]);
 
 
   useEffect(() => {
-    if (onOffHireCategoryData?.data?.category) {
-      setChecklist(onOffHireCategoryData.data.category);
+    if (!isEditing) return;
+    if (!contactPersonOptions.length) return;
+  
+    const selected = contactPersonOptions.find(
+      item =>
+        item.name.trim().toLowerCase() ===
+        contactPerson.trim().toLowerCase()
+    );
+  
+    if (selected) {
+      setSelectedContactPersonId(selected.id);
     }
-  }, [onOffHireCategoryData]);
+  }, [contactPersonOptions, contactPerson, isEditing]);
+  
+  
+  //services
+  useEffect(() => {
+    if (!isEditing) return;
+    if (!formData?.services) return;
+  
+    if (!formData?.services) return;
+
+    const updatedServices = getDefaultServices();
+  
+    Object.entries(formData.services).forEach(([key, value]) => {
+      switch (key) {
+        case "on_hire_checking":
+          updatedServices.onHiringChecking = value === "true";
+          break;
+        case "off_hire_checking":
+          updatedServices.offHiringChecking = value === "true";
+          break;
+        case "external_condition":
+          updatedServices.externalCondition = value === "true";
+          break;
+        case "washing_or_cleaning":
+          updatedServices.washingCleaning = value === "true";
+          break;
+        case "painting_checking":
+          updatedServices.paintingChecking = value === "true";
+          break;
+        case "internal_checking":
+          updatedServices.internalChecking = value === "true";
+          break;
+        case "running_condition":
+          updatedServices.runningCondition = value === "true";
+          break;
+      }
+    });
+  
+    console.log(updatedServices);
+  
+    setServices(updatedServices);
+    
+  }, [isEditing, formData]);
+
+  useEffect(() => {
+    if (formData?.equipmentTypeId) {
+      setEquipmentTypeId(String(formData.equipmentTypeId));
+    }
+  
+    if (formData?.equipmentId) {
+      setEquipmentId(String(formData.equipmentId));
+    }
+  }, [formData]);
+
+  useEffect(() => {
+    let title = "New On Hire";
+
+    if (flag === "needToOffHire") {
+      title = "Do Off Hire";
+    } else if (isEditing) {
+      title = String(hireId);
+    }
+
+    navigation.setOptions({
+      headerTitle: title,
+    });
+  }, [flag, isEditing, hireId, navigation]);
+
 
   //company
   useEffect(() => {
@@ -395,19 +524,9 @@ export default function OnOffHireFormScreen() {
   ) => {
     setChecklist(updatedData);
 
-    console.log("Updated Checklist:", updatedData);
+    // console.log("Updated Checklist:", updatedData);
   };
-  const resetFormAndScrollTop = () => {
-    clearForm();
-  
-    setTimeout(() => {
-      scrollViewRef.current?.scrollTo({
-        x: 0,
-        y: 0,
-        animated: true,
-      });
-    }, 100);
-  };
+
   const handleCompanySelect = (id: string) => {    
     if (isCompanyV2Enabled()) {
       handleCompanyChange(id);
@@ -481,6 +600,8 @@ export default function OnOffHireFormScreen() {
   
     return `${day}/${month}/${year}`;
   };
+  // console.log('isEditing',isEditing);
+
 
   const handleFormSubmit = async() => {
     const { valid, errors } = validateForm({
@@ -532,34 +653,46 @@ export default function OnOffHireFormScreen() {
    
        const cleanedContactNo = String(contactNo).replace(/\D/g, "");
       // Build FormData (fresh instance always)
+      const isOffHire = flag === "needToOffHire";
+
+      console.log('hireId',hireId, isEditing);
+      
       const payload = buildOnOffHireFormData({
-        onOffId: isEditing ? existingReport?.id : 0,
+        hireId: isEditing ? String(hireId ?? "") : "0",
+        
         userId,
-        company_name: companyId,
-        address,
-        location,
+
+        company_name: isOffHire ? undefined : companyId,
+        address: isOffHire ? undefined : address,
+        location: isOffHire ? undefined : location,
+
         contactPerson,
         contactNo: cleanedContactNo,
         date: formatDateDDMMYYYY(date),
-        equipmentType: equipmentTypeId || "",
-        equipmentId: equipmentId,
+
+        equipmentType: isOffHire ? undefined : equipmentTypeId || "",
+        equipmentId: isOffHire ? undefined : equipmentId,
+        mcSerialNo: isOffHire ? undefined : mcSerialNo,
+
         hourMeter,
-        mcSerialNo,
         services: conditionList,
         checklist,
         images,
         remarks,
+
         technician: serviceTechnician,
         signatureTechnician: techUri
           ? { uri: techUri, name: "tech.png", type: "image/png" }
           : undefined,
+
         acceptedBy,
         signatureAcceptedBy: supUri
           ? { uri: supUri, name: "sup.png", type: "image/png" }
           : undefined,
+
         hireDate: formatDateDDMMYYYY(hireDate),
-        nricWpPs:nRIC,
-        contractorName
+        nricWpPs: nRIC,
+        contractorName,
       });
   
       //  clone FormData (prevents RN mutation bug)
@@ -575,7 +708,7 @@ export default function OnOffHireFormScreen() {
   
         for (let i = 0; i < 3; i++) {
           try {
-            return await createOnOffHire({ formData: data });
+            return await createOnOffHire({ formData: data, flag: flag });
           } catch (e) {
             lastErr = e;
             await new Promise(r => setTimeout(r, 700));
@@ -586,10 +719,10 @@ export default function OnOffHireFormScreen() {
       };
   
       const res = await uploadWithRetry(safeFormData);
-      console.log("SUBMIT RESPONSE", res);
+      // console.log("SUBMIT RESPONSE", res);
 
       if (res?.status_code === 200) {
-        console.log("INVALIDATING...");
+        // console.log("INVALIDATING...");
         
         await queryClient.invalidateQueries({
           queryKey: ["on-off-hire-list"],
@@ -631,55 +764,10 @@ export default function OnOffHireFormScreen() {
 
   return ( 
     <ThemedView style={styles.container}>
-      {/* Sticky Header */}
-      <View style={styles.stickyHeader}>
-        <View style={styles.row}>
-          <CustomButton
-            onPress={() => {
-              if (hireType !== "ON") {
-                setHireType("ON");
-                resetFormAndScrollTop();
-              }
-            }}
-            style={[
-              styles.button,
-              hireType !== "ON" && styles.inactiveButton,
-            ]}
-            textStyle={
-              hireType !== "ON"
-                ? { color: "red" }
-                : undefined
-            }
-          >
-            On Hire
-          </CustomButton>
-
-          <CustomButton
-            onPress={() => {
-              if (hireType !== "OFF") {
-                setHireType("OFF");
-                resetFormAndScrollTop();
-              }
-            }}
-            style={[
-              styles.button,
-              hireType !== "OFF" && styles.inactiveButton,
-            ]}
-            textStyle={
-              hireType !== "OFF"
-                ? { color: "red" }
-                : undefined
-            }
-          >
-            Off Hire
-          </CustomButton>
-        </View>
-      </View>
 
       {/* Scrollable Content */}
       <KeyboardAwareScrollViewCompat 
-        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + Spacing["6xl"], paddingTop: 90, }]}   
-        ref={scrollViewRef}
+        contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + Spacing["6xl"], }]}   
         keyboardShouldPersistTaps="handled"
 
       >
@@ -732,9 +820,9 @@ export default function OnOffHireFormScreen() {
             value={contactNo} 
             onChangeText={setContactNo} 
             keyboardType="phone-pad" 
-            // editable={!readOnly && !isEditing} 
-            // selectTextOnFocus={!readOnly && !isEditing} 
-            // readOnly={readOnly || isEditing}
+            editable={!readOnly && !isEditing} 
+            selectTextOnFocus={!readOnly && !isEditing} 
+            readOnly={readOnly || isEditing}
             />
 
           <FormDatePicker 
@@ -794,21 +882,21 @@ export default function OnOffHireFormScreen() {
             <View style={styles.inputHalf}>
               <FormCheckbox
                 label={
-                  hireType === "ON"
-                    ? "On Hiring Checking"
-                    : "Off Hiring Checking"
+                  flag === "needToOffHire"
+                    ? "Off Hiring Checking"
+                    : "On Hiring Checking"
                 }
                 checked={
-                  hireType === "ON"
-                    ? services.onHiringChecking
-                    : services.offHiringChecking
+                  flag === "needToOffHire"
+                    ? services.offHiringChecking
+                    : services.onHiringChecking
                 }
                 onChange={(val) =>
                   setServices((prev) => ({
                     ...prev,
-                    [hireType === "ON"
-                      ? "onHiringChecking"
-                      : "offHiringChecking"]: val,
+                    [flag === "needToOffHire"
+                      ? "offHiringChecking"
+                      : "onHiringChecking"]: val,
                   }))
                 }
                 readOnly={readOnly}
@@ -889,9 +977,11 @@ export default function OnOffHireFormScreen() {
 
         <Card elevation={1} style={styles.section}>
           <ThemedText type="h4">
-            {hireType === "ON"
-              ? "On Hire Checklist"
-              : "Off Hire Checklist"}
+          {
+            flag === "needToOffHire"
+              ? "Return / Off Hire Checking"
+              : "Handover / On Hire Checking"
+          }
           </ThemedText>
             <OnOffHireCategoryChecklist
               data={checklist}
@@ -999,7 +1089,8 @@ export default function OnOffHireFormScreen() {
         </Card>
 
         <Card elevation={1} style={styles.section}>
-          <ThemedText type="h4" style={styles.sectionTitle}>{hireType == "ON" ? "Handover / On Hire checking": "Return / Off Hire Checking"}</ThemedText>
+          <ThemedText type="h4" style={styles.sectionTitle}>
+            {flag === "needToOffHire" ? "Return / Off Hire Checking" : "Handover / On Hire checking"}</ThemedText>
           <FormInput 
             label="Service Technician" 
             placeholder="Enter service technician" 
@@ -1055,11 +1146,15 @@ export default function OnOffHireFormScreen() {
             backgroundColor: Colors.light.primary,
           }}
         >
-          {isPending
-                ? <CustomLoader color="#fff" />
-                : isEditing
-                  ? "Update"
-                  : "Submit"}
+          {isPending ? (
+              <CustomLoader color="#fff" />
+            ): flag === "needToOffHire" ? (
+              "Submit Off Hire" 
+            ) : isEditing ? (
+              "Update"
+            ) : (
+              "Submit On Hire"
+            )}
         </CustomButton>
       </KeyboardAwareScrollViewCompat>
     </ThemedView>

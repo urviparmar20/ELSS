@@ -26,10 +26,10 @@ export const validateForm = (params: ValidateFormParams): { valid: boolean; erro
   const phone = contactNo.trim();
 
   // ---- COMMON ----
-  if (!companyId) errors.push("Company is required");
+  // if (!companyId) errors.push("Company is required");
   if (!address) errors.push("Address is required");
   if (!location) errors.push("Location is required");
-  if (!contactPerson) errors.push("Contact Person is required");
+  // if (!contactPerson) errors.push("Contact Person is required");
   if (!contactNo) errors.push("Contact Number is required");
   // must be digits only
   if (phone && !/^\d+$/.test(phone)) {
