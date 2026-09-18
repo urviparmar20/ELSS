@@ -40,8 +40,6 @@ export default function OnOffHireListScreen() {
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const { data, isLoading, error, refetch } = useOnOffHires(currentPage);  
-
-  // console.log('data',data?.data);
   
   useEffect(() => {
     if (!Array.isArray(data?.data)) return;
@@ -262,7 +260,7 @@ export default function OnOffHireListScreen() {
           <View style={styles.detailRow}>
             <Feather name="calendar" size={14} color={colors.textSecondary} />
             <ThemedText type="small" style={{ color: colors.textSecondary, marginLeft: 6 }}>
-              {formatDate(item?.on_hire?.date)}
+              {formatDate(item.status == "ON_HIRE"? item?.on_hire?.date : item?.off_hire?.date)}
             </ThemedText>
           </View>
         </View>

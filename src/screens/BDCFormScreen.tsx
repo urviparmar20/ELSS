@@ -328,7 +328,6 @@ export default function BDCFormScreen() {
         navigation.navigate("BDCList");
       }
     } catch (error: any) {
-      console.log("SUBMIT ERROR:", error);
     
       let errorMessage = "Something went wrong";
     

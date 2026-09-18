@@ -8,10 +8,11 @@ export const storeOnOffHireApi = async ({
   flag: string;
   formData: FormData;
 }) => {
-  console.log('flag',flag);
   
   const endpoint = flag == "needToOffHire" ? "/hire/off/store" : "/hire/on/store";
-  const baseURL = "https://elss.devwebproject.com/api/v2";
+  // const baseURL = "https://elss.devwebproject.com/api/v2";
+  const baseURL =  "https://alpineelss.seatrium.com/api/v2";
+
 
   const response = await fetch(`${baseURL}${endpoint}`, {
     method: "POST",
@@ -21,7 +22,6 @@ export const storeOnOffHireApi = async ({
     },
     body: formData,
   });
-// console.log('response',response);
 
   if (!response.ok) {
     const text = await response.text();

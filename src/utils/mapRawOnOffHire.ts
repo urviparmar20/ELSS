@@ -1,7 +1,5 @@
 export function mapRawOnOffHire(raw: any) {
   if (!raw) return null;
-
-  console.log('raw',raw);
   
   return {
     // ---------- BASIC INFO ----------

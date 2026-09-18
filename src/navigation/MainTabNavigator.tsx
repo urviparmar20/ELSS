@@ -126,7 +126,7 @@ export default function MainTabNavigator() {
         options={{
           title: "On/Off Hire",
           tabBarIcon: ({ color, size }) => (
-            <Feather name="repeat" size={size} color={color} />
+            <Feather name="package" size={size} color={color} />
           ),
         }}
         listeners={({ navigation }) => ({
@@ -149,13 +149,13 @@ export default function MainTabNavigator() {
           },
         })}
       />
-      {/* <Tab.Screen
+      <Tab.Screen
         name="SendInReturnTab"
         component={SendInReturnStackNavigator}
         options={{
           title: "Send In/Return",
           tabBarIcon: ({ color, size }) => (
-            <Feather name="repeat" size={size} color={color} />
+            <Feather name="refresh-cw" size={size} color={color} />
           ),
         }}
         listeners={({ navigation }) => ({
@@ -177,7 +177,7 @@ export default function MainTabNavigator() {
             );
           },
         })}
-      /> */}
+      />
       <Tab.Screen
         name="ProfileTab"
         component={ProfileStackNavigator}

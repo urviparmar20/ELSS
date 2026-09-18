@@ -7,18 +7,22 @@ import SendInReturnListScreen from "../screens/SendInReturnListScreen";
 import PastSendInReturnListScreen from "../screens/PastSendInReturnListScreen";
 import SendInReturnFormScreen from "../screens/SendInReturnFormScreen";
 import SendInReturnDetailScreen from "../screens/SendInReturnDetailScreen";
+
 export type SendInReturnStackParamList = {
   SendInReturnList: undefined;
   PastSendInReturn: undefined;
   SendInReturnForm: {
-    report?: any;
-    gm_id?: string;
-    readOnly?: boolean;
+    sendInReturn?: any;
+    sendIn_id?: string;
+    readOnly?: boolean;    
+    flag?: string;
   } | undefined;
+
   SendInReturnDetail: {
-    report?: any;
-    gm_id?: string;
+    sendInReturn?: any;
+    sendIn_id?: string;
     readOnly?: boolean;
+    flag?: string;
   } | undefined;
 };
 
@@ -50,7 +54,7 @@ export default function SendInReturnStackNavigator() {
         component={SendInReturnFormScreen}
         options={{
           presentation: "modal",
-          headerTitle: "New Send In/Return",
+          headerTitle: "New Send In",
         }}
       />
       <Stack.Screen

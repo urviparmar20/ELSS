@@ -94,7 +94,7 @@ export interface OnOffHireRecord {
   job_list?: any[];
   images?: RNFile[];
   job_descriptions: string;
-
+  off_hire: any;
   on_hire_technician: string;
   on_hire_signature_technician?: RNFile;
   on_hire_accepted_by:string;

@@ -300,7 +300,6 @@ export default function OnOffHireFormScreen() {
       }
     });
   
-    console.log(updatedServices);
   
     setServices(updatedServices);
     
@@ -654,8 +653,6 @@ export default function OnOffHireFormScreen() {
        const cleanedContactNo = String(contactNo).replace(/\D/g, "");
       // Build FormData (fresh instance always)
       const isOffHire = flag === "needToOffHire";
-
-      console.log('hireId',hireId, isEditing);
       
       const payload = buildOnOffHireFormData({
         hireId: isEditing ? String(hireId ?? "") : "0",
@@ -735,11 +732,9 @@ export default function OnOffHireFormScreen() {
   
         navigation.navigate("OnOffHireList");
       
-        console.log("INVALIDATED");
       }
   
     } catch (error: any) {
-      console.log("SUBMIT ERROR:", error);
     
       let errorMessage = "Something went wrong";
     

@@ -18,7 +18,6 @@ import {
   Colors,
   Spacing,
 } from "../constants/theme";
-import { checklistSections } from "../constants/sendInReturnChecklist";
 import ChecklistSection from "../components/ChecklistSection";
 import { FormDropdown } from "../components/FormDropdown";
 import { Feather } from "@expo/vector-icons";
@@ -27,6 +26,21 @@ import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { SendInReturnStackParamList } from "../navigation/SendInReturnStackNavigator";
 import { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { SignatureBox } from "../components/SignatureBox";
+import { useSendInReturnChecklist } from "../hooks/useSendInReturnChecklist";
+import { validateForm } from "../utils/validateSendInRerurn";
+import { downloadRemoteFile } from "../utils/downloadRemoteFile";
+import { ensureFileExists } from "../utils/ensureFileExists";
+import { buildSendInReturnFormData } from "../utils/buildSendInReturnFormData";
+import { useSelector } from "react-redux";
+import { RootState } from "../store";
+import { useQueryClient } from "@tanstack/react-query";
+import { useStoreSendInReturn } from "../hooks/useStoreSendInReturn";
+import { formatDateDDMMYYYY } from "../utils/formatDateDDMMYYYY";
+import { mapRawSendInReturn } from "../utils/mapRawSendInReturn";
+import { convertToISODate } from "../utils/convertToISODate";
+import CustomLoader from "../components/CustomLoader";
+import { useUpdateSendIn } from "../hooks/useUpdateSendIn";
+
 
 type RNImage = {
   uri: string;
@@ -34,22 +48,6 @@ type RNImage = {
   type: string;
   size?: number;
   isExisting?: boolean;
-};
-type ChecklistItem = {
-  sendIn: {
-    status: string;
-    remarks: string;
-  };
-  onReturn: {
-    status: string;
-    remarks: string;
-  };
-};
-
-type ChecklistData = {
-  [section: string]: {
-    [item: string]: ChecklistItem;
-  };
 };
 
 const MAX_IMAGES = 5;
@@ -61,29 +59,48 @@ type SendInReturnNavigationProp = NativeStackNavigationProp<SendInReturnStackPar
 
 export default function SendInReturnFormScreen() {
 
+  const queryClient = useQueryClient();
+  const navigation = useNavigation<SendInReturnNavigationProp>();
+
   const colors = Colors.light;
   const route = useRoute<SendInReturnFormRouteProp>();
+  const token = useSelector((state: RootState) => state.auth.token);
+  const userId = useSelector((state: RootState) => state.auth.user?.user_id);
 
-  const existingReport = route.params?.report || null;
+  const existingReport = route.params?.sendInReturn || null;
   const readOnly = route.params?.readOnly ?? false;
-  const gmId = route.params?.gm_id;  
+  const sendInId = route.params?.sendIn_id;  
+  const flag = route.params?.flag || "";
 
   const isEditing = !!existingReport;
   const isSubmitted = isEditing && existingReport?.is_pending === "N";
   const [isManualSerialNo, setIsManualSerialNo] = useState(false);
+  const [isManualBrand, setIsManualBrand] = useState(false);
+  const [isManualModelNo, setIsManualModelNo] = useState(false);
 
-  const [brand, setBrand] = useState("");
-  const [serialNo, setSerialNo] = useState("");
-  const [hourMeter, setHourMeter] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+
+  const formData = React.useMemo(
+    () => (existingReport ? mapRawSendInReturn(existingReport) : null),
+    [existingReport]
+  );
+
+  const [brand, setBrand] = useState(formData?.brand || "");
+  const [serialNo, setSerialNo] = useState(formData?.mcSerialNo || "");
+  const [modelNo, setModelNo] = useState(formData?.modelNo || "");
+  const [hourMeter, setHourMeter] = useState(
+    formData?.hourMeter?.toString() ?? ""
+  );
+  const [date, setDate] = useState(convertToISODate(formData?.date));
   const [showTimePicker, setShowTimePicker] = useState(false);
 
-  const [time, setTime] = useState("");
-  const [images, setImages] = useState<RNImage[]>([]);
-  const [comments, setComments] = useState("");
+  const [time, setTime] = useState(formData?.time || "");
+  const [images, setImages] = useState<RNImage[]>(formData?.images || []);
+  const [comments, setComments] = useState(formData?.comments || "");
+
   const [equipmentTypeId, setEquipmentTypeId] = useState<string | null>(
-    );
-  const [equipmentId, setEquipmentId] = useState("");
+    String(formData?.equipmentTypeId) ?? null
+  );
+  const [equipmentId, setEquipmentId] = useState(formData?.equipmentId || "");
 
   const [equipmentTypeOptions, setEquipmentTypeOptions] = useState<
   { id: string; name: string }[]>([]);
@@ -91,11 +108,11 @@ export default function SendInReturnFormScreen() {
     location: string; id: string; name: string; serialNo: string 
   }[]>([]);
 
-  const [sendIn, setSendIn] = useState("");
+  const [sendIn, setSendIn] = useState(formData?.sendIn || "");
   const [sendInSignature, setSendInSignature] = useState("");
   const [sendInDate, setSendInDate] = useState(new Date().toISOString().split("T")[0]);
 
-  const [receivedBy, setReceivedBy] = useState("");
+  const [receivedBy, setReceivedBy] = useState(formData?.receivedBy || "");
   const [receivedbySignature, setReceivedbySignature] = useState("");
   const [receivedByDate, setReceivedByDate] = useState(new Date().toISOString().split("T")[0]);
 
@@ -111,12 +128,75 @@ export default function SendInReturnFormScreen() {
   const [foremanSignature, setForemanSignature] = useState("");
   const [foremanDate, setForemanDate] = useState(new Date().toISOString().split("T")[0]);
 
-  const [checklistData, setChecklistData] = useState<ChecklistData>({});
+  const [checklistValues, setChecklistValues] = useState({});
+
 
   const { data: eqTypeData } = useEquipmentTypeList();
   const { data: equipmentListData } = useEquipmentListByType(equipmentTypeId);
+  const { data: sendInReturnChecklistData } = useSendInReturnChecklist(equipmentTypeId);
+  const { mutateAsync: createSendInReturn, isPending: isCreatePending } = useStoreSendInReturn(token, flag); 
+  const { mutateAsync: updateSendIn , isPending: isUpdatePending } = useUpdateSendIn(token);
+
+  //navigation
+  useEffect(() => {
+    let title = "New Send In";
+
+    if (flag === "needToReturn") {
+      title = "Do Return";
+    } else if (isEditing) {
+      title = String(sendInId);
+    }
+
+    navigation.setOptions({
+      headerTitle: title,
+    });
+  }, [flag, isEditing, sendInId, navigation]);
+
+  //checklist
+  useEffect(() => {
+    // Clear checklist for Return
+    if (flag === "needToReturn") {
+      setChecklistValues({});
+      return;
+    }
   
-console.log('equipmentListData',equipmentListData);
+    if (!formData?.checklistValues?.length) {
+      setChecklistValues({});
+      return;
+    }
+  
+    const formattedChecklist = formData.checklistValues.reduce(
+      (acc: any, item: any) => {
+        let status = "";
+  
+        if (item.status === "1") {
+          status = "good";
+        } else if (item.status === "0") {
+          status = "faulty";
+        }
+  
+        acc[item.checklist_item_id] = {
+          sendIn: {
+            status,
+            remarks: item.remarks ?? "",
+          },
+        };
+  
+        return acc;
+      },
+      {}
+    );
+  
+    setChecklistValues(formattedChecklist);
+  }, [formData, flag]);
+  
+  //signature
+  useEffect(() => {
+    if (!formData) return;
+  
+    setSendInSignature(formData.sendInSignature || "");
+    setReceivedbySignature(formData.receivedbySignature || "");
+  }, [formData]);
 
   useEffect(() => {
     const equipmentTypeList = eqTypeData?.data?.equipmentTypeList;
@@ -157,27 +237,6 @@ console.log('equipmentListData',equipmentListData);
   
     if (selectedIndex === -1 || selectedIndex === undefined) return;
   
-    const serialNo = equipmentList.serial_no?.[selectedIndex];
-  
-    const invalidSerial =
-      !serialNo ||
-      serialNo === "null" ||
-      serialNo.trim() === "";
-  
-    // IMPORTANT
-    // if (invalidSerial) {
-    //   // keep existing report value in edit mode
-    //   if (isEditing && formData?.mcSerialNo) {
-    //     setMcSerialNo(formData.mcSerialNo);
-    //   } else {
-    //     setMcSerialNo("");
-    //   }
-  
-    //   setIsManualSerialNo(true);
-    // } else {
-    //   setMcSerialNo(serialNo);
-    //   setIsManualSerialNo(false);
-    // }
   }, [equipmentId, equipmentListData]);
 
   const formatTime = (date: Date) =>
@@ -273,63 +332,247 @@ console.log('equipmentListData',equipmentListData);
     setImages((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const updateChecklist = (
-    sectionTitle: string,
-    item: string,
-    area: "sendIn" | "onReturn",
+  const handleChecklistChange = (
+    checklist_item_id: number,
+    section: "sendIn" | "onReturn",
     field: "status" | "remarks",
     value: string
   ) => {
-    setChecklistData((prev: any) => ({
+    setChecklistValues(prev => ({
       ...prev,
-      [sectionTitle]: {
-        ...(prev[sectionTitle] || {}),
-        [item]: {
-          ...(prev[sectionTitle]?.[item] || {}),
-          [area]: {
-            ...(prev[sectionTitle]?.[item]?.[area] || {}),
-            [field]: value,
-          },
+      [checklist_item_id]: {
+        ...(prev[checklist_item_id] || {}),
+        [section]: {
+          ...(prev[checklist_item_id]?.[section] || {}),
+          [field]: value,
         },
       },
     }));
-  };
+  };  
+  
+  const buildChecklistPayload = () => {
+    const result: any = {};
 
-  const handleSubmit = () => {
-    console.log({
-      brand,
-      equipment_type: equipmentTypeId,
-      equipment_id: equipmentId,
-      serialNo,
-      hourMeter,
-      date,
-      time,
-      checklist: checklistData,
-      images,
-      comments,
-      sendIn,
-      sendInSignature,
-      sendInDate,
-      receivedBy,
-      receivedbySignature,
-      receivedByDate,
-      acceptedBy,
-      acceptedBySignature,
-      acceptedByDate,
-      mechanic,
-      mechanicSignature,
-      mechanicDate,
-      foreman,
-      foremanSignature,
-      foremanDate
+    sendInReturnChecklistData?.data?.checklist?.forEach((section: any) => {
+      section.items.forEach((item: any) => {
+        result[item.checklist_item_id] = {
+          sendIn: {
+            status:
+              checklistValues[item.checklist_item_id]?.sendIn?.status || "",
+            remarks:
+              checklistValues[item.checklist_item_id]?.sendIn?.remarks || "",
+          },
+          onReturn: {
+            status:
+              checklistValues[item.checklist_item_id]?.onReturn?.status || "",
+            remarks:
+              checklistValues[item.checklist_item_id]?.onReturn?.remarks || "",
+          },
+        };
+      });
     });
-    console.log(
-      JSON.stringify(checklistData, null, 2)
-    );
 
-    
+    return result;
   };
+  const finalChecklist = buildChecklistPayload();
 
+//   console.log("FINAL CHECKLIST");
+// console.log(JSON.stringify(finalChecklist, null, 2));
+
+
+  const handleSubmit = async() => {
+    const { valid, errors } = validateForm({
+      isSendIn: true,
+      equipmentType: equipmentId,
+      equipmentId,
+      sendIn,
+      signatureSendInBy: sendInSignature,
+      checkedReceivedBy: receivedBy,
+      signatureCheckedReceivedBy: receivedbySignature,
+    
+      //Return
+      checkedAcceptedBy: acceptedBy,
+      signatureCheckedAcceptedBy: acceptedBySignature,
+      mechanic,
+      signatureMechanic: mechanicSignature,
+      foreman,
+      signatureForeman: foremanSignature,
+    });
+  
+    if (!valid) {
+      Toast.show({
+        type: "error",
+        text1: "Validation Error",
+        text2: errors[0],
+      });
+      return;
+    }
+    try {
+      
+       // 1. normalize URIs
+       let sendInUri = sendInSignature;
+       let receivedByUri = receivedbySignature;
+       let acceptedByUri = acceptedBySignature;
+       let mechanicByUri = mechanicSignature;
+       let foremanInUri = foremanSignature;
+   
+       // 2. convert remote → local if needed
+       if (sendInUri?.startsWith("http")) {
+        sendInUri = await downloadRemoteFile(sendInUri);
+       }
+       if (receivedByUri?.startsWith("http")) {
+        receivedByUri = await downloadRemoteFile(receivedByUri);
+       }
+       if (acceptedByUri?.startsWith("http")) {
+        acceptedByUri = await downloadRemoteFile(acceptedByUri);
+       }
+       if (mechanicByUri?.startsWith("http")) {
+        mechanicByUri = await downloadRemoteFile(mechanicByUri);
+       }
+       if (foremanInUri?.startsWith("http")) {
+        foremanInUri = await downloadRemoteFile(foremanInUri);
+       }
+  
+   
+       // 3. IMPORTANT: ensure files are ready
+       if (sendInUri) await ensureFileExists(sendInUri);
+       if (receivedByUri) await ensureFileExists(receivedByUri);
+   
+      // Build FormData (fresh instance always)
+      const isReturn = flag === "needToReturn";
+      
+      const payload = buildSendInReturnFormData({
+        userId,
+        sendInId: isEditing ? String(sendInId ?? "") : "0",
+        isReturn,
+        equipmentType: isReturn ? undefined : equipmentTypeId || "",
+        equipmentId: isReturn ? undefined : equipmentId,
+        brand,
+        modelNo,
+        serialNo,
+        hourMeter,
+        complaints: comments,
+        date: formatDateDDMMYYYY(date),
+        time,
+        checklist: finalChecklist,
+        images,
+
+          //SendIn
+        sendInBy: isReturn ? undefined : sendIn,
+        signatureSendInBy: isReturn ? undefined : sendInUri
+        ? { uri: sendInUri, name: "sendInBy.png", type: "image/png" }
+        : undefined,
+
+        checkedReceivedBy: isReturn ? undefined : receivedBy,
+        signatureCheckedReceivedBy: isReturn ? undefined : receivedByUri
+          ? { uri: receivedByUri, name: "receivedBy.png", type: "image/png" }
+          : undefined,
+
+          //Return
+        checkedAcceptedBy: isReturn ? acceptedBy : undefined,
+        signatureCheckedAcceptedBy: isReturn ?  acceptedByUri
+        ? { uri: acceptedByUri, name: "checkedAcceptedBy.png", type: "image/png" }
+        : undefined : undefined,
+
+        mechanic: isReturn ? mechanic : undefined,
+        signatureMechanic: isReturn ? mechanicByUri
+          ? { uri: mechanicByUri, name: "mechanic.png", type: "image/png" }
+          : undefined : undefined,
+
+        foreman: isReturn ? foreman : undefined,
+        signatureForeman: isReturn ? foremanInUri
+        ? { uri: foremanInUri, name: "foreman.png", type: "image/png" }
+        : undefined : undefined,
+
+
+      });
+  
+      //  clone FormData (prevents RN mutation bug)
+      const safeFormData = new FormData();
+      (payload as any)._parts?.forEach(([k, v]: any) => {
+        safeFormData.append(k, v);
+        // console.log('safeFormData', k, v);
+      });
+  
+      //  6. retry wrapper (prevents first-call network glitch)
+      const uploadWithRetry = async (data: FormData) => {
+        let lastErr;
+      
+        for (let i = 0; i < 3; i++) {
+          try {
+            if (flag === "needToUpdate") {
+              return await updateSendIn({formData: data});
+            }
+      
+            return await createSendInReturn({ 
+              formData: data, 
+              flag 
+            });
+      
+          } catch (e: any) {
+            lastErr = e;
+            await new Promise(r => setTimeout(r, 700));
+          }
+        }
+      
+        throw lastErr;
+      };
+      
+  
+      const res = await uploadWithRetry(safeFormData);
+
+      if (res?.status_code === 200) {
+        
+        await queryClient.invalidateQueries({
+          queryKey: ["send-in-return-list"],
+        });
+        Toast.show({
+          type: "success",
+          text1: "Success",
+          text2: "Submitted Successfully",
+        });
+  
+        navigation.navigate("SendInReturnList");
+      
+      }
+  
+    } catch (error: any) {
+      Toast.show({
+        type: "error",
+        text1: "Erroe",
+        text2: "Submitted Successfully",
+      });
+
+      let errorMessage = "Something went wrong";
+    
+      if (error.response?.data) {
+        const { message, errors } = error.response.data;
+    
+        if (errors) {
+          // Combine all validation messages
+          errorMessage = Object.values(errors)
+            .flat()
+            .join("\n");
+        } else if (message) {
+          errorMessage = message;
+        }
+      }
+    
+      Toast.show({
+        type: "error",
+        text1: "Validation Error",
+        text2: errorMessage,
+        visibilityTime: 5000,
+      });
+    
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: errorMessage,
+      });
+    } 
+  }
+ 
   return (
     <ThemedView style={styles.container}>
       <ScrollView
@@ -355,9 +598,11 @@ console.log('equipmentListData',equipmentListData);
               setEquipmentTypeId(id);
               setEquipmentId(""); // reset equipment
               setSerialNo("");
+              setBrand("");
+              setModelNo("");
               setIsManualSerialNo(false);
             }}
-            readOnly={readOnly}
+            readOnly={readOnly || flag === "needToReturn"}
           />
 
           <FormDropdown
@@ -387,9 +632,30 @@ console.log('equipmentListData',equipmentListData);
                 setSerialNo(invalidSerial ? "" : serialNo);
             
                 setIsManualSerialNo(invalidSerial);
+
+                // Brand
+                const selectedBrand = equipmentListData?.data?.equipmentList?.brand?.[selectedIndex];
+                
+                if (!selectedBrand) {
+                  setBrand("");
+                  setIsManualBrand(true);
+                } else {
+                  setBrand(selectedBrand);
+                  setIsManualBrand(false);
+                }
+
+                // Model No
+                const selectedModel = equipmentListData?.data?.equipmentList?.model_no?.[selectedIndex];
+                if (!selectedModel) {
+                  setModelNo("");
+                  setIsManualModelNo(true);
+                } else {
+                  setModelNo(selectedModel);
+                  setIsManualModelNo(false);
+                }
               }
             }}
-            readOnly={readOnly}
+            readOnly={readOnly || flag === "needToReturn"}
             searchable
           />
 
@@ -398,6 +664,15 @@ console.log('equipmentListData',equipmentListData);
             value={brand}
             onChangeText={setBrand}
             placeholder="Enter brand"
+            readOnly={readOnly || (!isManualBrand && !!brand) || flag === "needToReturn"}
+          />
+
+          <FormInput
+            label="Model No"
+            value={modelNo}
+            onChangeText={setModelNo}
+            placeholder="Enter Model no"
+            readOnly={readOnly || (!isManualModelNo && !!modelNo) || flag === "needToReturn"}
           />
 
           <FormInput
@@ -407,7 +682,7 @@ console.log('equipmentListData',equipmentListData);
             placeholder="Enter serial no"
             editable={!readOnly && isManualSerialNo}
             selectTextOnFocus={!readOnly && isManualSerialNo}
-            readOnly={readOnly || !isManualSerialNo}
+            readOnly={readOnly || !isManualSerialNo || flag === "needToReturn"}
           />
 
           <FormInput
@@ -450,23 +725,16 @@ console.log('equipmentListData',equipmentListData);
         </Card>
 
         {/* Checklist Sections */}
-        {checklistSections.map((section) => (
-          <ChecklistSection
-            key={section.title}
-            title={section.title}
-            items={section.items}
-            values={checklistData[section.title] || {}}
-            onChange={(item, area, field, value) =>
-              updateChecklist(
-                section.title,
-                item,
-                area,
-                field,
-                value
-              )
-            }
-          />
-        ))}
+          {sendInReturnChecklistData?.data?.checklist?.map((section: any) => (
+            <ChecklistSection
+              key={section.category}
+              title={section.category}
+              items={section.items}
+              values={checklistValues}
+              onChange={handleChecklistChange}
+              sectionType={flag === "needToReturn" ? "onReturn" : "sendIn"}
+            />
+          ))}
         {/* Images */}
         <Card elevation={1} style={styles.section}>
           <ThemedText type="h4" style={[styles.sectionTitle, { marginBottom: Spacing.md }]}>
@@ -565,105 +833,85 @@ console.log('equipmentListData',equipmentListData);
             selectTextOnFocus={!readOnly}
             readOnly={readOnly}/>
         </Card>
-        <Card elevation={1} style={styles.section}>
-        <ThemedText type="h4" style={styles.sectionTitle}>Send In</ThemedText>
-          <FormInput 
-            label="Send In By" 
-            placeholder="Enter send in by" 
-            value={sendIn} onChangeText={setSendIn}
-            editable={!readOnly}
-            selectTextOnFocus={!readOnly}
-            readOnly={readOnly}
-          />
-          <SignatureBox label="Send In By Signature" value={sendInSignature} onChange={setSendInSignature} readOnly={readOnly}/>
+        {
+          flag === "needToReturn" ?
+            <Card elevation={1} style={styles.section}>
+              <ThemedText type="h4" style={styles.sectionTitle}>On Return</ThemedText>
+              <FormInput 
+                label="Check and Accepted by" 
+                placeholder="Enter accepted by" 
+                value={acceptedBy} onChangeText={setAcceptedBy}
+                editable={!readOnly}
+                selectTextOnFocus={!readOnly}
+                readOnly={readOnly}
+              />
+              <SignatureBox label="Check and Accepted by Signature" value={acceptedBySignature} onChange={setAcceptedBySignature} readOnly={readOnly}/>
 
-          <FormDatePicker 
-            label="Date" 
-            value={sendInDate} 
-            onChange={setSendInDate} 
-            readOnly={readOnly}
-          />
+              <FormInput 
+                label="Mechanic" 
+                placeholder="Enter mechanic" 
+                value={mechanic} 
+                onChangeText={setMechanic}
+                editable={!readOnly}
+                selectTextOnFocus={!readOnly}
+                readOnly={readOnly}
+              />
+              <SignatureBox label="Mechanic Signature" value={mechanicSignature} onChange={setMechanicSignature} readOnly={readOnly}/>
 
-          <FormInput 
-            label="Checked & Received by" 
-            placeholder="Enter received by" 
-            value={receivedBy} 
-            onChangeText={setReceivedBy}
-            editable={!readOnly}
-            selectTextOnFocus={!readOnly}
-            readOnly={readOnly}
-          />
-          <SignatureBox label="Checked & Received by Signature" value={receivedbySignature} onChange={setReceivedbySignature} readOnly={readOnly}/>
+              <FormInput 
+                label="Foreman/Engineer" 
+                placeholder="Enter Foreman/Engineer name" 
+                value={foreman} 
+                onChangeText={setForeman}
+                editable={!readOnly}
+                selectTextOnFocus={!readOnly}
+                readOnly={readOnly}
+              />
+              <SignatureBox label="Foreman/Engineer Signature" value={foremanSignature} onChange={setForemanSignature} readOnly={readOnly}/>
+            </Card>
+           :
+            <Card elevation={1} style={styles.section}>
+              <ThemedText type="h4" style={styles.sectionTitle}>Send In</ThemedText>
+              <FormInput 
+                label="Send In By" 
+                placeholder="Enter send in by" 
+                value={sendIn} onChangeText={setSendIn}
+                editable={!readOnly}
+                selectTextOnFocus={!readOnly}
+                readOnly={readOnly}
+              />
+              <SignatureBox label="Send In By Signature" value={sendInSignature} onChange={setSendInSignature} readOnly={readOnly}/>
 
-          <FormDatePicker 
-            label="Date" 
-            value={receivedByDate} 
-            onChange={setReceivedByDate} 
-            readOnly={readOnly}
-          />
-        </Card>
-        <Card elevation={1} style={styles.section}>
-        <ThemedText type="h4" style={styles.sectionTitle}>On Return</ThemedText>
-          <FormInput 
-            label="Check and Accepted by" 
-            placeholder="Enter accepted by" 
-            value={acceptedBy} onChangeText={setAcceptedBy}
-            editable={!readOnly}
-            selectTextOnFocus={!readOnly}
-            readOnly={readOnly}
-          />
-          <SignatureBox label="Check and Accepted by Signature" value={acceptedBySignature} onChange={setAcceptedBySignature} readOnly={readOnly}/>
-
-          <FormDatePicker 
-            label="Date" 
-            value={acceptedByDate} 
-            onChange={setAcceptedByDate} 
-            readOnly={readOnly}
-          />
-
-          <FormInput 
-            label="Mechanic" 
-            placeholder="Enter mechanic" 
-            value={mechanic} 
-            onChangeText={setMechanic}
-            editable={!readOnly}
-            selectTextOnFocus={!readOnly}
-            readOnly={readOnly}
-          />
-          <SignatureBox label="Mechanic Signature" value={mechanicSignature} onChange={setMechanicSignature} readOnly={readOnly}/>
-
-          <FormDatePicker 
-            label="Date" 
-            value={mechanicDate} 
-            onChange={setMechanicDate} 
-            readOnly={readOnly}
-          />
-
-          <FormInput 
-            label="Foreman/Engineer" 
-            placeholder="Enter Foreman/Engineer name" 
-            value={foreman} 
-            onChangeText={setForeman}
-            editable={!readOnly}
-            selectTextOnFocus={!readOnly}
-            readOnly={readOnly}
-          />
-          <SignatureBox label="Foreman/Engineer Signature" value={foremanSignature} onChange={setForemanSignature} readOnly={readOnly}/>
-
-          <FormDatePicker 
-            label="Date" 
-            value={foremanDate} 
-            onChange={setForemanDate} 
-            readOnly={readOnly}
-          />
-          
-        </Card>
-
+              <FormInput 
+                label="Checked & Received by" 
+                placeholder="Enter received by" 
+                value={receivedBy} 
+                onChangeText={setReceivedBy}
+                editable={!readOnly}
+                selectTextOnFocus={!readOnly}
+                readOnly={readOnly}
+              />
+              <SignatureBox label="Checked & Received by Signature" value={receivedbySignature} onChange={setReceivedbySignature} readOnly={readOnly}/>
+            </Card>
+        }
+        
+        
+       
         <CustomButton
-          style={styles.submitButton}
           onPress={handleSubmit}
+          style={{
+            backgroundColor: Colors.light.primary,
+          }}
         >
-          Submit
+          {isCreatePending ? (
+              <CustomLoader color="#fff" />
+            ): flag === "needToReturn" ? (
+              "Submit Return" 
+            ) : isEditing ? (
+              "Update"
+            ) : (
+              "Submit Send In"
+            )}
         </CustomButton>
       </ScrollView>
     </ThemedView>

@@ -65,7 +65,9 @@ export function FormInput({
             style
           ]}
           placeholderTextColor={colors.textSecondary}
-          multiline={multiline}
+          multiline={multiline}  
+          editable={!readOnly}   
+          selectTextOnFocus={!readOnly}
           numberOfLines={numberOfLines}
           {...props}
         />

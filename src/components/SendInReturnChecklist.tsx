@@ -10,13 +10,16 @@ import { Spacing } from "../constants/theme";
 
 type Props = {
   title: string;
+  position?: string | null;
   value: any;
+  sectionType: "sendIn" | "onReturn";
   onChange: (
     section: "sendIn" | "onReturn",
     field: "status" | "remarks",
     value: string
   ) => void;
 };
+
 const statusOptions = [
   { id: "good", name: "Good" },
   { id: "faulty", name: "Faulty" },
@@ -24,70 +27,50 @@ const statusOptions = [
 ];
 
 export default function SendInReturnChecklist({
-  title, value, onChange
+  title, value, onChange, sectionType
 }: Props) {
   return (
-    <Card style={styles.card}>
+    <View style={styles.card}>
       <ThemedText type="h4" style={styles.title}>
         {title}
       </ThemedText>
 
       <View style={styles.row}>
-        {/* SEND IN */}
         <View style={styles.column}>
-          <ThemedText type="body" style={styles.heading}>
-            Send In
-          </ThemedText>
+          <View style={styles.inputRow}>
+            <View style={styles.inputColumn}>
+              <FormDropdown
+                label="Status"
+                options={statusOptions}
+                selectedValue={value?.[sectionType]?.status ?? ""}
+                onValueChange={(v) =>
+                  onChange(sectionType, "status", v)
+                }
+              />
+            </View>
 
-          <FormDropdown
-            label="Status"
-            options={statusOptions}
-            selectedValue={value?.sendIn?.status ?? ""}
-            onValueChange={(v) =>
-              onChange("sendIn", "status", v)
-            }
-          />
-
-          <FormInput
-            label="Remarks"
-            value={value?.sendIn?.remarks ?? ""}
-            onChangeText={(text) =>
-              onChange("sendIn", "remarks", text)
-            }
-          />
-        </View>
-
-        {/* RETURN */}
-        <View style={styles.column}>
-          <ThemedText type="body" style={styles.heading}>
-            On Return
-          </ThemedText>
-
-          <FormDropdown
-            label="Status"
-            options={statusOptions}
-            selectedValue={value?.onReturn?.status ?? ""}
-            onValueChange={(v) =>
-              onChange("onReturn", "status", v)
-            }
-          />
-
-          <FormInput
-            label="Remarks"
-            value={value?.onReturn?.remarks ?? ""}
-            onChangeText={(text) =>
-              onChange("onReturn", "remarks", text)
-            }
-          />
+            <View style={styles.inputColumn}>
+              <FormInput
+                label="Remarks"
+                placeholder="Enter Remarks"
+                value={value?.[sectionType]?.remarks ?? ""}
+                onChangeText={(text) =>
+                  onChange(sectionType, "remarks", text)
+                }
+              />
+            </View>
+          </View>
         </View>
       </View>
-    </Card>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
     marginBottom: Spacing.md,
+    marginTop: Spacing.md,
+    marginLeft: Spacing.xl
   },
 
   title: {
@@ -97,7 +80,6 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     justifyContent: "space-between",
-    gap: Spacing.md,
   },
 
   column: {
@@ -105,7 +87,15 @@ const styles = StyleSheet.create({
   },
 
   heading: {
-    marginBottom: Spacing.sm,
     fontWeight: "600",
+  },
+  inputRow: {
+    flexDirection: "row",
+    gap: Spacing.md,
+    alignItems: "flex-start",
+  },
+  
+  inputColumn: {
+    flex: 1,
   },
 });

@@ -84,7 +84,7 @@ export type ValidateFormParams = {
   contactNo: string;
   mcSerialNo: string;
   hourMeter: string;
-  jobNo: string;
+  // jobNo: string;
   equipmentTypeId: string | null;
   equipmentId: string;
   clientName: string;

@@ -2,8 +2,7 @@ import React, { useEffect } from "react";
 import {
   View,
   StyleSheet,
-  ScrollView,
-  Pressable
+  ScrollView
 } from "react-native";
 
 import {
@@ -23,7 +22,6 @@ import {
   BorderRadius,
 } from "../constants/theme";
 
-import { Feather } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { ONOffHireStackParamList } from "../navigation/OnOffHireStackNavigator";
 import { formatDate } from "../utils/formatDate";
@@ -48,8 +46,10 @@ export default function OnOffHireDetailScreen() {
   const colors = Colors.light;
 
   const report = existingReport?.raw || existingReport;  
-  console.log('report',report);
-  
+  const hireData =
+  report.status === "COMPLETED"
+    ? report.off_hire
+    : report.on_hire;
 
   useEffect(() => {
     navigation.setOptions({
@@ -66,10 +66,9 @@ export default function OnOffHireDetailScreen() {
     );
   }
 
-
   // SERVICE TYPES
-  const selectedServices = report?.on_hire?.condition_list
-    ? Object.entries(report.on_hire?.condition_list)
+  const selectedServices = hireData?.condition_list
+    ? Object.entries(hireData?.condition_list)
         .filter(([_, value]) => value === "true")
         .map(([key]) =>
           key
@@ -118,12 +117,12 @@ export default function OnOffHireDetailScreen() {
 
         <DetailItem
           label="Contact Name"
-          value={report.on_hire?.contact_person_name}
+          value={hireData?.contact_person_name}
         />
 
         <DetailItem
           label="Contact No"
-          value={report.on_hire?.contact_no}
+          value={hireData?.contact_no}
         />
 
         <DetailItem
@@ -138,7 +137,7 @@ export default function OnOffHireDetailScreen() {
 
         <DetailItem
           label="Date"
-          value={formatDate(report.on_hire?.date)}
+          value={formatDate(hireData?.date)}
         />    
       </Card>
 
@@ -168,7 +167,7 @@ export default function OnOffHireDetailScreen() {
 
         <DetailItem
           label="Hour Meter"
-          value={report.on_hire?.hr_meter}
+          value={hireData?.hr_meter}
         />
       </Card>
 
@@ -197,7 +196,7 @@ export default function OnOffHireDetailScreen() {
         </ThemedText>
 
         <ThemedText type="body">
-          {report.on_hire?.remarks || "-"}
+          {hireData?.remarks || "-"}
         </ThemedText>
       </Card>
 
@@ -211,8 +210,8 @@ export default function OnOffHireDetailScreen() {
         </ThemedText>
 
         <View style={styles.imagesContainer}>
-          {Array.isArray(report.on_hire?.images) && report.on_hire?.images.length > 0 ? (
-            report.on_hire?.images.map((img: any, index: number) => {
+          {Array.isArray(hireData?.images) && hireData?.images.length > 0 ? (
+            hireData?.images.map((img: any, index: number) => {
               const imageUri =
                 typeof img === "string"
                   ? img
@@ -239,32 +238,35 @@ export default function OnOffHireDetailScreen() {
           type="h3"
           style={styles.sectionTitle}
         >
-          Handover / On Hire Checking
+          {
+            report.status == "COMPLETED" ? "Return / Off Hire Checking" : "Handover / On Hire Checking"
+          }
+          
         </ThemedText>
 
         <DetailItem
           label="Service Technician"
-          value={report.on_hire?.technician}
+          value={hireData?.technician}
         />
 
         <DetailItem
           label="Accepted by"
-          value={report.on_hire?.accepted_by}
+          value={hireData?.accepted_by}
         />
 
         <DetailItem
           label="Work Permit"
-          value={report.on_hire?.work_permit}
+          value={hireData?.work_permit}
         />
 
         <DetailItem
           label="Contractor name"
-          value={report.on_hire?.contractor_name}
+          value={hireData?.contractor_name}
         />
 
         <DetailItem
           label="Hire Date"
-          value={formatDate(report.on_hire?.date)}
+          value={formatDate(hireData?.date)}
         />
 
       </Card>

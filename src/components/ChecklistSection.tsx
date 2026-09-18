@@ -14,12 +14,22 @@ import SendInReturnChecklist from "./SendInReturnChecklist";
 import { Spacing } from "../constants/theme";
 
 
+type ChecklistItem = {
+  checklist_item_id: number;
+  item: string;
+  position: string | null;
+  status: string | null;
+  remarks: string;
+};
+
 type Props = {
   title: string;
-  items: string[];
+  items: ChecklistItem[];
   values: any;
+  sectionType: "sendIn" | "onReturn";
+
   onChange: (
-    item: string,
+    checklist_item_id: number,
     section: "sendIn" | "onReturn",
     field: "status" | "remarks",
     value: string
@@ -31,6 +41,7 @@ export default function ChecklistSection({
   items,
   values,
   onChange,
+  sectionType
 }: Props) {
   const [expanded, setExpanded] = useState(false);
   // const [expanded, setExpanded] =
@@ -58,18 +69,20 @@ export default function ChecklistSection({
       </Pressable>
 
       {expanded && (
-        <View style={styles.content}>
+        <>
           {items.map((item) => (
             <SendInReturnChecklist
-              key={item}
-              title={item}
-              value={values[item]}
+              key={item.checklist_item_id}
+              title={item.item}
+              position={item.position}
+              value={values[item.checklist_item_id]}
               onChange={(section, field, value) =>
-                onChange(item, section, field, value)
+                onChange(item.checklist_item_id, section, field, value)
               }
+              sectionType={sectionType}
             />
-          ))}
-        </View>
+        ))}
+        </>
       )}
     </Card>
   );
@@ -77,7 +90,7 @@ export default function ChecklistSection({
 
 const styles = StyleSheet.create({
   card: {
-    marginBottom: Spacing.md,
+    marginBottom: Spacing.sm,
   },
 
   header: {
@@ -88,9 +101,5 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: Spacing.sm,
-  },
-
-  content: {
-    marginTop: Spacing.md,
   },
 });

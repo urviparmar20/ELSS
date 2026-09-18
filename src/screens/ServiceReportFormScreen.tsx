@@ -717,7 +717,6 @@ export default function ServiceReportFormScreen() {
     //   });
     // }
     catch (error: any) {
-      console.log("draft ERROR:", error);
     
       let errorMessage = "Something went wrong";
     

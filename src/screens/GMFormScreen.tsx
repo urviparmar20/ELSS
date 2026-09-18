@@ -848,15 +848,15 @@ export default function MaintenanceFormScreen() {
       address,
       mcSerialNo,
       hourMeter,
-      jobNo,
+      // jobNo,
       equipmentTypeId,
       equipmentId,
       clientName,
       clientContactNo,
       serviceTimes,
       remarks,
-      technicianSignature,
-      supervisorSignature,
+      technicianSignature, // make it optional in draft
+      supervisorSignature, // make it optional in draft
       foreman,
       serviceDepartment,
       contactPerson,

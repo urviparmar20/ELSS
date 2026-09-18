@@ -5,7 +5,6 @@ import { usePastOnOffHireList } from '../hooks/usePastOnOffHireList';
 
 export default function PastOnOffHireListScreen() {
   const { data, isLoading } = usePastOnOffHireList();  
-  console.log('data',data);
   
 
   return (

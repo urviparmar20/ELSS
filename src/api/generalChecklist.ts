@@ -46,19 +46,13 @@ import axios from "axios";
 import api from "./api";
 
 import { EQUIPMENT_TYPES } from "../constants/equipment";
+import apiV2 from "./apiV2";
 
 interface GeneralChecklistParams {
   equipmentTypeId: string;
   frequency?: string;
   token: string;
 }
-
-// API V2 ONLY FOR AP & FORKLIFT
-const apiV2 = axios.create({
-  // baseURL: "https://alpineelss.seatrium.com/api/v2",
-  baseURL: "https://elss.devwebproject.com/api/v2",
-  timeout: 60000,
-});
 
 export const getGeneralChecklistApi = async ({
   equipmentTypeId,

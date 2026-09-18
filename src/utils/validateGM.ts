@@ -16,7 +16,7 @@ export const validateForm = (params: ValidateFormParams): { valid: boolean; erro
     contactNo,
     mcSerialNo,
     hourMeter,
-    jobNo,
+    // jobNo,
     equipmentTypeId,
     equipmentId,
     clientName,
@@ -40,7 +40,7 @@ export const validateForm = (params: ValidateFormParams): { valid: boolean; erro
   if (!contactNo) errors.push("Contact Number is required");
   if (!mcSerialNo.trim()) errors.push("M/C or Serial No is required");
   if (!hourMeter) errors.push("Hour Meter is required");
-  if (!jobNo) errors.push("Job Number is required");
+  // if (!jobNo) errors.push("Job Number is required");
 
   if (!equipmentTypeId) errors.push("Equipment type is required");
   if (!equipmentId) errors.push("Equipment ID is required");
