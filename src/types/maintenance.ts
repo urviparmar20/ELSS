@@ -96,6 +96,8 @@ export type ValidateFormParams = {
   supervisorSignature: string;
   foreman: string;
   serviceDepartment: string;
+  requireSignatures: boolean;
+
   // services: string[];
 };
 
@@ -130,8 +132,8 @@ export interface MaintenanceRecord {
   checklist: Record<string, boolean>;
   partsSuppliedText: string;
   partsLubricants: PartsLubricants;
-  technicianSignature: string;
-  supervisorSignature: string;
+  technicianSignature?: string;
+  supervisorSignature?: string;
   foreman: string;
   serviceDepartment: string;
   completionDate: string;

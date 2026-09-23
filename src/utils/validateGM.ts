@@ -27,6 +27,7 @@ export const validateForm = (params: ValidateFormParams): { valid: boolean; erro
     supervisorSignature,
     foreman,
     serviceDepartment,
+    requireSignatures,
     // services
   } = params;
 
@@ -86,8 +87,19 @@ export const validateForm = (params: ValidateFormParams): { valid: boolean; erro
   // }
   
 
-  if (!technicianSignature) errors.push("Please take Technician Signature");
-  if (!supervisorSignature) errors.push("Please take KSS Supervisor Signature");
+  // if (!technicianSignature) errors.push("Please take Technician Signature");
+  // if (!supervisorSignature) errors.push("Please take KSS Supervisor Signature");
+   // ---- SIGNATURES ----
+  // Required only for Submit/Update, NOT Draft
+  if (requireSignatures) {
+    if (!technicianSignature) {
+      errors.push("Please take Technician Signature");
+    }
+
+    if (!supervisorSignature) {
+      errors.push("Please take KSS Supervisor Signature");
+    }
+  }
   if (!foreman) errors.push("Foreman is required");
 
   if (!serviceDepartment) errors.push("Service Department is required");

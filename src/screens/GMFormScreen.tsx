@@ -38,7 +38,6 @@ import { mapRawGM } from "../utils/mapRawGM";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { EQUIPMENT_TYPES } from "../constants/equipment";
 import CheckListAPKL from "../components/CheckListAPKL";
-import * as FileSystem from "expo-file-system/legacy";
 import { downloadRemoteFile } from "../utils/downloadRemoteFile";
 import { ensureFileExists } from "../utils/ensureFileExists";
 import { isCompanyV2Enabled } from "../utils/appVersion";
@@ -115,6 +114,7 @@ export default function MaintenanceFormScreen() {
   const [contactPerson, setContactPerson] = useState(formData?.contactPerson || "");
   const [contactNo, setContactNo] = useState(formData?.contactNo || "");
   const [email, setEmail] = useState(formData?.email || "");
+  const [hasStartedSubmit, setHasStartedSubmit] = useState(false);
 
   const [equipmentTypeId, setEquipmentTypeId] = useState<string | null>(
     formData?.equipmentTypeId ?? null
@@ -150,8 +150,9 @@ export default function MaintenanceFormScreen() {
   const [partsLubricants, setPartsLubricants] = useState<PartsLubricants>(formData?.partsLubricants || DEFAULT_PARTS_LUBRICANTS);
   const [companyName, setCompanyName] = useState(formData?.companyName || "");
 
-  type SubmitAction = "draft" | "submit" | null;
-  const [activeAction, setActiveAction] = useState<SubmitAction>(null);
+  type SubmitAction = "draft" | "submit";
+  const [activeAction, setActiveAction] = useState<SubmitAction | null>(null);
+
   const [technicianSignature, setTechnicianSignature] = useState("");
   const [supervisorSignature, setSupervisorSignature] = useState("");
   const [serviceDepartment, setServiceDepartment] = useState(formData?.serviceDepartment || "ALPINE-ELSS");
@@ -329,12 +330,23 @@ export default function MaintenanceFormScreen() {
   }, [companyData, eqTypeData]); 
 
   //signature
+  // useEffect(() => {
+  //   if (!formData) return;
+  
+  //   setTechnicianSignature(formData.signature_technician || "");
+  //   setSupervisorSignature(formData.signature_supervisor || "");
+  // }, [formData]);
   useEffect(() => {
     if (!formData) return;
+  console.log('formData.signature_technician',formData.signature_technician);
   
-    setTechnicianSignature(formData.signature_technician || "");
-    setSupervisorSignature(formData.signature_supervisor || "");
-  }, [formData]);
+    // Load existing signatures only when opening the record.
+    // Once user starts submitting, don't restore them again.
+    if (!hasStartedSubmit) {
+      setTechnicianSignature(formData.signature_technician || "");
+      setSupervisorSignature(formData.signature_supervisor || "");
+    }
+  }, [formData, hasStartedSubmit]);
 
   //company
   useEffect(() => {
@@ -842,6 +854,42 @@ export default function MaintenanceFormScreen() {
 
   const handleFormSubmit = async (action: SubmitAction) => {
     setActiveAction(action);
+
+    // =========================================================
+    // 1. SIGNATURE VALIDATION - ONLY FOR SUBMIT
+    // =========================================================
+    if (action === "submit") {
+      const missingTechnician = !technicianSignature;
+      const missingSupervisor = !supervisorSignature;
+  
+      if (missingTechnician || missingSupervisor) {
+        let errorMessage = "";
+  
+        if (missingTechnician && missingSupervisor) {
+          errorMessage =
+            "Technician and Supervisor signatures are required.";
+        } else if (missingTechnician) {
+          errorMessage =
+            "Technician signature is required.";
+        } else if (missingSupervisor) {
+          errorMessage =
+            "Supervisor signature is required.";
+        }
+  
+        Toast.show({
+          type: "error",
+          text1: "Validation Error",
+          text2: errorMessage,
+        });
+  
+        setActiveAction(null);
+        return;
+      }
+  
+      setHasStartedSubmit(true);
+    }
+    
+  
   
     const { valid, errors } = validateForm({
       companyId,
@@ -861,6 +909,9 @@ export default function MaintenanceFormScreen() {
       serviceDepartment,
       contactPerson,
       contactNo,
+      // Signatures are required only when submitting, not saving draft
+      // requireSignatures: action !== "draft",
+      requireSignatures: action === "submit",
     });
   
     if (!valid) {
@@ -879,24 +930,53 @@ export default function MaintenanceFormScreen() {
         equipmentTypeId === EQUIPMENT_TYPES.FORKLIFT;
   
       // 1. normalize URIs
-      let techUri = technicianSignature;
-      let supUri = supervisorSignature;
-  
-      // 2. convert remote → local if needed
-      if (techUri?.startsWith("http")) {
-        techUri = await downloadRemoteFile(techUri);
+      // let techUri = technicianSignature;
+      // let supUri = supervisorSignature;
+      let techUri = "";
+      let supUri = "";
+
+      if (action === "submit") {
+        techUri = technicianSignature;
+        supUri = supervisorSignature;
+
+        // Convert remote → local if needed
+        if (techUri?.startsWith("http")) {
+          techUri = await downloadRemoteFile(techUri);
+        }
+
+        if (supUri?.startsWith("http")) {
+          supUri = await downloadRemoteFile(supUri);
+        }
+
+        // Ensure files are ready
+        if (techUri) await ensureFileExists(techUri);
+        if (supUri) await ensureFileExists(supUri);
       }
-  
-      if (supUri?.startsWith("http")) {
-        supUri = await downloadRemoteFile(supUri);
-      }
-  
-      // 3. IMPORTANT: ensure files are ready
-      if (techUri) await ensureFileExists(techUri);
-      if (supUri) await ensureFileExists(supUri);
+
   
       const cleanedContactNo = String(contactNo).replace(/\D/g, "");
       // 4. Build FormData (fresh instance always)
+
+      const signatureFields =
+      action == "submit"
+        ? {
+            signature_technician: techUri
+              ? {
+                  uri: techUri,
+                  name: "tech.png",
+                  type: "image/png",
+                }
+              : undefined,
+
+            signature_supervisor: supUri
+              ? {
+                  uri: supUri,
+                  name: "sup.png",
+                  type: "image/png",
+                }
+              : undefined,
+          }
+        : {};
       const payload = buildGMFormData({
         maintenance_id: isEditing ? existingReport.id : 0,
         company_name: companyId,
@@ -928,13 +1008,15 @@ export default function MaintenanceFormScreen() {
         servicing_parts_lubricants_list: servicingPartsLubricants,
         other_parts_supplied_list: otherPart,
   
-        signature_technician: techUri
-          ? { uri: techUri, name: "tech.png", type: "image/png" }
-          : undefined,
+        // Only included for Submit
+        ...signatureFields,
+        // signature_technician: techUri
+        //   ? { uri: techUri, name: "tech.png", type: "image/png" }
+        //   : null,
   
-        signature_supervisor: supUri
-          ? { uri: supUri, name: "sup.png", type: "image/png" }
-          : undefined,
+        // signature_supervisor: supUri
+        //   ? { uri: supUri, name: "sup.png", type: "image/png" }
+        //   : null,
 
         foreman: foreman, 
         service_department: serviceDepartment,
@@ -962,11 +1044,12 @@ export default function MaintenanceFormScreen() {
       // 5. CRITICAL FIX: clone FormData (prevents RN mutation bug)
       const safeFormData = new FormData();
       (payload as any)._parts?.forEach(([k, v]: any) => {
-        // console.log('data',k,v);
+        console.log('data===>',k,"->",v);
 
         safeFormData.append(k, v);
       });
-      
+      console.log('safeFormData===>',safeFormData);
+
   
       // 6. retry wrapper (prevents first-call network glitch)
       const uploadWithRetry = async (data: FormData) => {

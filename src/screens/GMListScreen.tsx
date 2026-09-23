@@ -17,7 +17,8 @@ import { MaintenanceRecord } from "../types/maintenance";
 import CustomLoader from "../components/CustomLoader";
 import { FormDatePicker } from "../components/FormDatePicker";
 import { Toast } from "react-native-toast-message/lib/src/Toast";
-import { FormDropdown } from "../components/FormDropdown";
+import { useGeneralMaintenancePDF } from "../hooks/useGeneralMaintenancePDF";
+import { gmDownloadPDF } from "../utils/gmDownloadPDF";
 
 type MaintenanceNavigationProp = NativeStackNavigationProp<MaintenanceStackParamList>;
 
@@ -46,9 +47,14 @@ export default function GMListScreen() {
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
-
+  const [downloadingGMId, setDownloadingGMId] = useState<number | null>(null);
   const { data, isLoading } =
   useGeneralMaintenanceList();
+
+  const {
+    mutateAsync: generatePDF,
+    isPending: isPDFLoading,
+  } = useGeneralMaintenancePDF();
 
   useEffect(() => {
     if (data?.data?.generalMaintenance) {
@@ -237,6 +243,62 @@ export default function GMListScreen() {
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
   };
 
+  const handleDownloadPDF = async (gmId: number) => {
+    try {
+      setDownloadingGMId(gmId);
+  
+      console.log("Generating PDF for GM:", gmId);
+  
+      const response = await generatePDF(gmId);
+  
+      console.log("PDF API response:", response);
+  
+      if (!response?.success) {
+        throw new Error(
+          response?.message || "Unable to generate PDF"
+        );
+      }
+  
+      const downloadUrl = response?.data?.download_url;
+      const fileName = response?.data?.file_name;
+  
+      if (!downloadUrl || !fileName) {
+        throw new Error("PDF download information is missing.");
+      }
+  
+      console.log("PDF URL:", downloadUrl);
+      console.log("PDF file name:", fileName);
+  
+      const downloadedFile = await gmDownloadPDF({
+        url: downloadUrl,
+        fileName,
+      });
+  
+      console.log(
+        "PDF saved successfully:",
+        downloadedFile.uri
+      );
+  
+      Toast.show({
+        type: "success",
+        text1: "PDF Downloaded",
+        text2: `${fileName} saved successfully.`,
+      });
+    } catch (error: any) {
+      console.error("PDF download error:", error);
+  
+      Toast.show({
+        type: "error",
+        text1: "Download Failed",
+        text2:
+          error?.message ||
+          "Unable to download PDF.",
+      });
+    } finally {
+      setDownloadingGMId(null);
+    }
+  };
+
   const renderFooter = () => {
     if (!isFetchingMore) return null;
   
@@ -247,7 +309,7 @@ export default function GMListScreen() {
     );
   };
   
-
+  
   const renderItem = ({ item }: { item: MaintenanceRecord }) => (
     <Card
       elevation={1}
@@ -343,6 +405,48 @@ export default function GMListScreen() {
       </View>
 
       <View style={styles.listItemActions}>
+        {/* Download PDF - only when completed */}
+        {item.is_pending === "N" && (
+          <Pressable
+            style={[
+              styles.downloadButton,
+              {
+                backgroundColor: colors.secondary + "20",
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+              },
+            ]}   
+            onPress={() => handleDownloadPDF(Number(item.id))}
+            disabled={downloadingGMId === Number(item.id)}
+          >
+            {downloadingGMId === Number(item.id) ? (
+              <CustomLoader
+                size="small"
+                color={colors.secondary}
+              />
+            ) : (
+              <Feather
+                name="download"
+                size={16}
+                color={colors.secondary}
+              />
+            )}
+
+            <ThemedText
+              style={{
+                color: colors.secondary,
+                fontSize: 13,
+                fontWeight: "600",
+              }}
+            >
+              {downloadingGMId === Number(item.id)
+                ? "Downloading..."
+                : `${item.gm_id}.pdf`}
+            </ThemedText>
+          </Pressable>
+        )}
+        {/* Edit */}
         <Pressable
           style={[styles.actionButton, { backgroundColor: colors.primary + "20" }]}
           onPress={() =>
@@ -687,6 +791,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  downloadButton: { minWidth: 125, height: 36, paddingHorizontal: 12, borderRadius: BorderRadius.sm, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, },
   emptyState: {
     flex: 1,
     alignItems: "center",

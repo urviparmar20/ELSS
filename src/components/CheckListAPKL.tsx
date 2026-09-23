@@ -469,9 +469,9 @@ const styles = StyleSheet.create({
   },
 
   radioOuter: {
-    width: 16,
-    height: 16,
-    borderRadius: Spacing.sm,
+    width: 20,
+    height: 20,
+    borderRadius: Spacing.md,
     borderWidth: 2,
     borderColor: Colors.light.primary,
     alignItems: "center",
@@ -480,9 +480,9 @@ const styles = StyleSheet.create({
   },
 
   radioInner: {
-    width: Spacing.sm,
-    height: Spacing.sm,
-    borderRadius: Spacing.xs,
+    width: 10,
+    height: 10,
+    borderRadius: Spacing.sm,
     backgroundColor: Colors.light.primary,
   },
 

@@ -10,8 +10,8 @@ export const storeOnOffHireApi = async ({
 }) => {
   
   const endpoint = flag == "needToOffHire" ? "/hire/off/store" : "/hire/on/store";
-  // const baseURL = "https://elss.devwebproject.com/api/v2";
-  const baseURL =  "https://alpineelss.seatrium.com/api/v2";
+  const baseURL = "https://elss.devwebproject.com/api/v2";
+  // const baseURL =  "https://alpineelss.seatrium.com/api/v2";
 
 
   const response = await fetch(`${baseURL}${endpoint}`, {

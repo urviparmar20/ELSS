@@ -37,16 +37,20 @@ export function SignatureBox({ label, value, onChange, readOnly = false,
   const [currentPath, setCurrentPath] = useState<Point[]>([]);
   const [imageUri, setImageUri] = useState<string>("");
 
-  const isImage = value?.startsWith("http") || value?.startsWith("file:");
 
-  /* ---------------- Sync existing signature (edit mode) ---------------- */
-  useEffect(() => {
-    if (isImage) {
-      setImageUri(value);
-      setPaths([]);
-      setCurrentPath([]);
-    }
-  }, [value]);
+ /* ---------------- Sync existing / cleared signature ---------------- */
+useEffect(() => {
+  if (value) {
+    setImageUri(value);
+    setPaths([]);
+    setCurrentPath([]);
+  } else {
+    // Parent cleared the signature
+    setImageUri("");
+    setPaths([]);
+    setCurrentPath([]);
+  }
+}, [value]);
 
   /* ---------------- Helpers ---------------- */
   const pointsToPath = useCallback((points: Point[]): string => {
